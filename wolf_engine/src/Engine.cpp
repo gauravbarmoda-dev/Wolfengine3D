@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_timer.h>
 #include <iostream>
 
 Engine::Engine() : window(nullptr), renderer(nullptr), isRunning(false), lastFrameTime(0), deltaTime(0.0f) {}
@@ -9,10 +10,12 @@ Engine::~Engine() {
 }
 
 bool Engine::Initialize(int width, int height, const char* title){
-    if(SDL_Init(SDL_INIT_VIDEO) != 0){ 
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0){ 
         std::cerr << "SDL Failed to Initialize: " << SDL_GetError() << "\n";
         return false;
     }
+
+    input.Init();
 
     window = SDL_CreateWindow(
         title,
@@ -34,7 +37,8 @@ bool Engine::Initialize(int width, int height, const char* title){
     }
     
     isRunning = true;
-    lastFrameTime = SDL_GetTicks();
+    lastFrameTime = SDL_GetPerformanceCounter();
+    perfFreq = 1.0f / (float)SDL_GetPerformanceFrequency();
 
     return true;
 }
@@ -62,8 +66,8 @@ void Engine::Update(){
         }
     }
 
-    unsigned int currentFrameTime = SDL_GetTicks();
-    deltaTime = (currentFrameTime - lastFrameTime) * 0.001f;
+    uint64_t currentFrameTime = SDL_GetPerformanceCounter();
+    deltaTime = (float)(currentFrameTime - lastFrameTime) * perfFreq;
     lastFrameTime = currentFrameTime;
 }
 

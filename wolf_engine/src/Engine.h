@@ -15,8 +15,9 @@ private:
 
     bool isRunning;
 
-    unsigned int lastFrameTime;
+    uint64_t lastFrameTime;
     float deltaTime;
+    float perfFreq;
 
 public:
     Engine();

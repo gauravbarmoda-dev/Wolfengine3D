@@ -1,0 +1,14 @@
+# Compiled Object files
+*.o
+*.obj
+
+# Compiled Executables
+*.out
+*.exe
+a.out
+test_build
+wolf_game_demo/test_build
+
+# Directories
+bin/
+build/

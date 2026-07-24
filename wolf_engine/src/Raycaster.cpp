@@ -13,9 +13,12 @@ Raycaster::~Raycaster(){
 }
 
 void Raycaster::Render(Camera* camera, Map* map, Rasterizer* rasterizer){
+    const unsigned char* mapData = map->GetRawData();
+    int mapShift = map->GetMapShift();
+
+    float invWidth = 2.0f / (float)scrWidth;
     uint16_t color;
     int tile;
-    float invWidth = 2.0f / (float)scrWidth;
 
     for(int x = 0; x < scrWidth; x++){
         float cameraX = invWidth * x  - 1.0f;                       // normalize camera plane
@@ -26,8 +29,8 @@ void Raycaster::Render(Camera* camera, Map* map, Rasterizer* rasterizer){
         int mapY = (int)camera->pos.y;
 
         Vector2 deltaDist = {                                       // distance ray must travel in it's direction            
-            std::abs(1.0f / rayDir.x),                              // to shift to next closest gridline
-            std::abs(1.0f / rayDir.y)
+            (rayDir.x == 0.0f) ? 1e30f : std::abs(1.0f / rayDir.x), // to shift to next closest gridline
+            (rayDir.y == 0.0f) ? 1e30f : std::abs(1.0f / rayDir.y)
         };
 
         Vector2 sideDist;                                           // distance ray must travel in it's direction
@@ -53,22 +56,25 @@ void Raycaster::Render(Camera* camera, Map* map, Rasterizer* rasterizer){
             sideDist.y = (mapY + 1.0f - camera->pos.y) * deltaDist.y;
         }
 
+        int mapIndex = (mapY << mapShift) + mapX;
+        int stepYIndex = stepY << mapShift;
+
         int side = 0;           // records which axis the ray collided with last. 0 for x, 1 for y
         bool rayHit = false;
 
         while(!rayHit){
             if(sideDist.x < sideDist.y){
                 sideDist.x += deltaDist.x;
-                mapX += stepX; 
+                mapIndex +=stepX;
                 side = 0;
             }
             else{
                 sideDist.y += deltaDist.y;
-                mapY += stepY;
+                mapIndex += stepYIndex;
                 side = 1;
             }
             
-            tile = map->GetTile(mapX, mapY);
+            tile = mapData[mapIndex];
             if(tile > 0){
                 rayHit = true;
             }

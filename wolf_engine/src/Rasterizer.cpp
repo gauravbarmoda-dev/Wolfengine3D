@@ -1,7 +1,6 @@
 #include "Rasterizer.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_render.h>
-#include <algorithm>
 #include <iostream>
 
 Rasterizer::Rasterizer() : width(0), height(0), texture(nullptr), pixels(nullptr) {}
@@ -60,33 +59,6 @@ void Rasterizer::DrawPixel(int x, int y, uint16_t color){
     if(x >= 0 && x < width && y >= 0 && y < height){
         pixels[y * width + x] = color;
     }
-}
-
-void Rasterizer::DrawVLine(int x, int startY, int endY, uint16_t color){
-    if(x < 0 || x >= width) return ;
-    if(startY < 0) startY = 0;
-    if(endY >= height) endY = height;
-
-    if(startY >= endY) return;
-
-    int pixIndex = startY * width + x;
-    for(int y = startY; y < endY; y++){
-        pixels[pixIndex] = color;
-        pixIndex += width;
-    } 
-}
-
-void Rasterizer::DrawHLine(int y, int startX, int endX, uint16_t color){
-    if(y < 0 || y >= height) return;
-    if(startX < 0) startX = 0;
-    if(endX >= width) endX = width;
-    
-    if(startX >= endX) return;
-
-    int startIndex = y * width + startX;
-    int endIndex   = y * width + endX;
-
-    std::fill(pixels + startIndex, pixels + endIndex, color);
 }
 
 void Rasterizer::DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16_t color){

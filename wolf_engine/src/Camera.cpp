@@ -1,19 +1,27 @@
 #include "Camera.h"
 #include "Map.h"
-#include <iostream>
-#include <cmath>
 
-Camera::Camera() : pos(1.5f, 1.5f), dir(1.0f, 0.0f), plane(0.0f, 0.66f) {}
-
-Camera::Camera(Vector2 startPos, Vector2 startDir, float fov) {
-    pos = startPos;
-    dir = startDir;
-    plane = dir.Normal() * fov;
+Camera::Camera() : pos(1.5f, 1.5f), absAngle(0), fov(0.66f) {
+    Update();
 }
 
-void Camera::Rotate(float angleRadius){
-    dir = dir.Rotate(angleRadius);
-    plane = plane.Rotate(angleRadius);
+Camera::Camera(Vector2 startPos, int startAngle, float f) {
+    pos = startPos;
+    absAngle = startAngle;
+    fov = f;
+    Update();
+}
+
+void Camera::Update(){
+    dir.x = fcos(absAngle);
+    dir.y = fsin(absAngle);
+    plane.x = -dir.y * fov;
+    plane.y =  dir.x * fov;
+}
+
+void Camera::Rotate(float angleDelta){
+    absAngle += angleDelta;
+    Update();
 }
 
 void Camera::Move(float distance, Map* map){
