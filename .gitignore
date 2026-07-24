@@ -1,14 +1,48 @@
+# ---------------------------------
 # Compiled Object files
+# ---------------------------------
 *.o
 *.obj
 
-# Compiled Executables
+# ---------------------------------
+# Compiled Executables & Libraries
+# ---------------------------------
 *.out
 *.exe
+*.so
+*.dll
+*.dylib
 a.out
+rg35xx_game          
 test_build
 wolf_game_demo/test_build
 
-# Directories
+# ---------------------------------
+# Build Directories
+# ---------------------------------
 bin/
 build/
+obj/
+
+# ---------------------------------
+# IDE and Editor Files
+# ---------------------------------
+.vscode/             
+.idea/               
+*.swp                
+*.swo
+*~                   
+compile_commands.json 
+
+# ---------------------------------
+# OS Generated Junk
+# ---------------------------------
+.DS_Store            
+Thumbs.db            
+
+# ---------------------------------
+# Engine Crash Logs
+# ---------------------------------
+core                 
+vgcore.*             
+*.log                
