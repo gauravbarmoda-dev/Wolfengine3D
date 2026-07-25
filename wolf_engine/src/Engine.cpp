@@ -30,7 +30,7 @@ bool Engine::Initialize(int width, int height, const char* title){
         return false;
     }
 
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     
     if(!renderer){
         std::cerr << "Failed to create SDL renderer: " << SDL_GetError() << "\n";
@@ -38,7 +38,7 @@ bool Engine::Initialize(int width, int height, const char* title){
     
     isRunning = true;
     lastFrameTime = SDL_GetPerformanceCounter();
-    perfFreq = 1.0f / (float)SDL_GetPerformanceFrequency();
+    performanceFreq = 1.0f / (float)SDL_GetPerformanceFrequency();
 
     return true;
 }
@@ -67,7 +67,32 @@ void Engine::Update(){
     }
 
     uint64_t currentFrameTime = SDL_GetPerformanceCounter();
-    deltaTime = (float)(currentFrameTime - lastFrameTime) * perfFreq;
+    deltaTime = (float)(currentFrameTime - lastFrameTime) * performanceFreq;
     lastFrameTime = currentFrameTime;
+
+    frameCount++;
+    fpsTimer += deltaTime;
+    if(fpsTimer >= 1.0f){
+        curFPS = frameCount;
+        frameCount = 0;
+        fpsTimer -= 1.0f;
+    }
+}
+
+void Engine::Wait(){
+    if(targetFrameTime <= 0.0f) return;
+
+    while(true){
+        uint64_t currentFrameTime = SDL_GetPerformanceCounter();
+        float elapsed = (float)(currentFrameTime - lastFrameTime) * performanceFreq;
+
+        if(elapsed >= targetFrameTime){
+            break;
+        }
+
+        if(targetFrameTime - elapsed > 0.002f){
+            SDL_Delay(1);
+        }
+    }
 }
 

@@ -17,7 +17,13 @@ private:
 
     uint64_t lastFrameTime;
     float deltaTime;
-    float perfFreq;
+    float performanceFreq;
+
+    float targetFrameTime = 0.0f;
+
+    float fpsTimer = 0.0f;
+    int frameCount = 0;
+    int curFPS     = 0;
 
 public:
     Engine();
@@ -25,8 +31,12 @@ public:
 
     bool Initialize(int width, int height, const char* title);
     void Update();
+    void Wait();
     void Quit();
 
+    void TargetFPS(int fps) {targetFrameTime = (fps > 0) ? (1.0f/fps) : 0;}
+
+    int GetFPS()                {return curFPS;}
     bool IsRunning()            {return isRunning;}
     float GetDeltaTime()        {return deltaTime;}
     Input& GetInput()           {return input;}

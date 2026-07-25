@@ -1,11 +1,11 @@
 #include "Camera.h"
 #include "Map.h"
 
-Camera::Camera() : pos(1.5f, 1.5f), absAngle(0), fov(0.66f) {
+Camera::Camera() : pos(1.5f, 1.5f), absAngle(0.0f), fov(0.66f) {
     Update();
 }
 
-Camera::Camera(Vector2 startPos, int startAngle, float f) {
+Camera::Camera(Vector2 startPos, float startAngle, float f) {
     pos = startPos;
     absAngle = startAngle;
     fov = f;
@@ -13,8 +13,8 @@ Camera::Camera(Vector2 startPos, int startAngle, float f) {
 }
 
 void Camera::Update(){
-    dir.x = fcos(absAngle);
-    dir.y = fsin(absAngle);
+    dir.x = fcos((int)absAngle);
+    dir.y = fsin((int)absAngle);
     plane.x = -dir.y * fov;
     plane.y =  dir.x * fov;
 }

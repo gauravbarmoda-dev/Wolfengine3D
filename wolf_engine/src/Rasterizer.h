@@ -1,6 +1,7 @@
 #ifndef RASTERIZER_H
 #define RASTERIZER_H
 
+#include <string>
 #include <cstdint>
 #include <algorithm>
 
@@ -27,6 +28,12 @@ public:
     void ClearHorizon(uint16_t ceil, uint16_t floor);
 
     void DrawPixel(int x, int y, uint16_t color);
+
+    void DrawChar(int x, int y, char c, uint16_t color);
+    
+    void DrawStr(int x, int y, const std::string& s, uint16_t color);
+
+    void DrawFPS(int fps, int x, int y, uint16_t color);
     
     void DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16_t color);
 

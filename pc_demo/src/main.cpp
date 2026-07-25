@@ -15,7 +15,7 @@ const uint16_t BROWN = 0x5182;
 
 void HandleInput(Engine& engine, Camera& camera, Map& map, float dt){
     float mvSpeed = 3.0f * dt;
-    int rotSpeed = (int)(1303.79f * dt);     //2x
+    int rotSpeed =  dt * 1400.0f;     //2x
 
     auto& input = engine.GetInput();
 
@@ -38,23 +38,23 @@ int main(){
 
     engine.Initialize(SCREEN_WIDTH, SCREEN_HEIGHT, "Test");
     rasterizer.Initialize(engine.GetRenderer(), SCREEN_WIDTH, SCREEN_HEIGHT);
-    
-    float accumulator = 0.0f;
-    const float FIXED_TIME_STEP = 1.0f / 60.0f; // 60 FPS Physics
 
-    while(engine.IsRunning()){
-        engine.Update(); // Updates the raw Delta Time
-        accumulator += engine.GetDeltaTime();
+    engine.TargetFPS(100);
 
-        // Run the physics in strict 16.6ms chunks
-        while(accumulator >= FIXED_TIME_STEP) {
-            HandleInput(engine, camera, map, FIXED_TIME_STEP);
-            accumulator -= FIXED_TIME_STEP;
-        }
+    while(engine.IsRunning()){  
+        engine.Update();
+
+        HandleInput(engine, camera, map, engine.GetDeltaTime());
 
         rasterizer.ClearHorizon(GRAY, BROWN);
+
         raycaster.Render(&camera, &map, &rasterizer);
+
+        rasterizer.DrawFPS(engine.GetFPS(), 10, 10, 0xFFFF);
+
         rasterizer.Present(engine.GetRenderer());
+
+        engine.Wait();
     }
 
     return 0;

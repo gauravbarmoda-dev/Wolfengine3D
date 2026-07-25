@@ -10,11 +10,11 @@ public:
     Vector2 dir;
     Vector2 plane;
 
-    int absAngle;
+    float absAngle;
     float fov;
 
     Camera();
-    Camera(Vector2 startPos, int startAngle, float fov = 0.66f);
+    Camera(Vector2 startPos, float startAngle, float fov = 0.66f);
     ~Camera() = default;
 
     void Update();
