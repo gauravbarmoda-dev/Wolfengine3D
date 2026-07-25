@@ -5,7 +5,7 @@
 #include <vector>
 
 enum class Keys{
-    W, A, S, D, E, Q
+    W, A, S, D, E, Q, R
 };
 
 enum class Gamepad{

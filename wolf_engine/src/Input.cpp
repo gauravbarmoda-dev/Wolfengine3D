@@ -13,7 +13,8 @@ static SDL_Scancode GetSDLScanCode(Keys key){
         case Keys::S : return SDL_SCANCODE_S;
         case Keys::D : return SDL_SCANCODE_D;
         case Keys::E : return SDL_SCANCODE_E;        
-        case Keys::Q : return SDL_SCANCODE_Q;        
+        case Keys::Q : return SDL_SCANCODE_Q;
+        case Keys::R : return SDL_SCANCODE_R;
 
         default :     return SDL_SCANCODE_UNKNOWN;
     }
@@ -39,17 +40,11 @@ static SDL_GameControllerButton GetSDLGamepadButton(Gamepad button){
 }
 
 Input::Input(){
-    sdlKey = SDL_GetKeyboardState(&numKey);
-    if(sdlKey != nullptr){
-        previousKeyState.resize(numKey, 0);
-    }
+    sdlKey = nullptr;
+    numKey = 0;
+    controller = nullptr;
 
     prevGamepadState.resize(SDL_CONTROLLER_BUTTON_MAX, 0);
-
-    controller = nullptr;
-    if(SDL_NumJoysticks() > 0){
-        controller = SDL_GameControllerOpen(0);
-    }
 }
 
 Input::~Input(){
@@ -59,6 +54,13 @@ Input::~Input(){
 }
 
 void Input::Init(){
+    sdlKey = SDL_GetKeyboardState(&numKey);
+
+    if(sdlKey != nullptr){
+        previousKeyState.resize(numKey, 0);
+    }
+
+    controller = nullptr;
     if(SDL_NumJoysticks() > 0){
         controller = SDL_GameControllerOpen(0);
     }

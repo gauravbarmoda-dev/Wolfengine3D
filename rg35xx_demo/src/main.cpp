@@ -12,11 +12,10 @@
 
 const uint16_t GRAY  = 0x4228;
 const uint16_t BROWN = 0x5182;
-const uint16_t RED   = 0xF800;
 
 void HandleInput(Engine& engine, Camera& camera, Map& map, float dt){
     float mvSpeed = 3.0f * dt;               //3x
-    int rotSpeed = (int)(1303.79f * dt);     //2x
+    float rotSpeed = 1303.79f * dt;          //2x
 
     auto& input = engine.GetInput();
 
@@ -28,6 +27,10 @@ void HandleInput(Engine& engine, Camera& camera, Map& map, float dt){
 
     if(input.isGamepadDown(Gamepad::L1)) camera.Rotate(-rotSpeed);    
     if(input.isGamepadDown(Gamepad::R1)) camera.Rotate(rotSpeed);    
+    
+    if(input.isGamepadDown(Gamepad::Select) && input.isGamepadDown(Gamepad::Start)) {
+        engine.Stop();
+    }
 }
 
 int main(){
@@ -35,10 +38,11 @@ int main(){
     Rasterizer rasterizer;
     Camera     camera;
     Engine     engine;
-    Map        map("rg35xx_demo/maps/level2.map", 16);
+    Map        map("maps/level2.map", 16);
 
     engine.Initialize(SCREEN_WIDTH, SCREEN_HEIGHT, "Test");
     rasterizer.Initialize(engine.GetRenderer(), SCREEN_WIDTH, SCREEN_HEIGHT);
+    engine.TargetFPS(60);
     
     while(engine.IsRunning()){
         engine.Update();
@@ -47,7 +51,12 @@ int main(){
 
         rasterizer.ClearHorizon(GRAY, BROWN);
         raycaster.Render(&camera, &map, &rasterizer);
+        
+        rasterizer.DrawFPS(engine.GetFPS(), 10, 10, 0xFFFF);
+        
         rasterizer.Present(engine.GetRenderer());
+        
+        engine.Wait();
     }
 
     return 0;

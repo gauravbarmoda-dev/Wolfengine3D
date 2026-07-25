@@ -27,6 +27,8 @@ void HandleInput(Engine& engine, Camera& camera, Map& map, float dt){
 
     if(input.isKeyDown(Keys::Q)) camera.Rotate(-rotSpeed);    
     if(input.isKeyDown(Keys::E)) camera.Rotate(rotSpeed);    
+    
+    if(input.isKeyDown(Keys::R)) engine.Quit();    
 }
 
 int main(){

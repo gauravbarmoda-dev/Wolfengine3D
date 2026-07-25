@@ -46,3 +46,9 @@ Thumbs.db
 core                 
 vgcore.*             
 *.log                
+
+# ---------------------------------
+# Local Files (Ignored for privacy)
+# ---------------------------------
+Makefile
+game

@@ -38,6 +38,7 @@ public:
 
     int GetFPS()                {return curFPS;}
     bool IsRunning()            {return isRunning;}
+    void Stop()                 {isRunning = false;}
     float GetDeltaTime()        {return deltaTime;}
     Input& GetInput()           {return input;}
     SDL_Renderer* GetRenderer() {return renderer;}
