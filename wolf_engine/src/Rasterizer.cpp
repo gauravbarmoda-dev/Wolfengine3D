@@ -76,10 +76,6 @@ void Rasterizer::DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16
     return;
 }
 
-void Rasterizer::DrawTexturedVLine(int x, int startY, int endY, int texID, int texX){
-    return ;    
-}
-
 void Rasterizer::Present(SDL_Renderer* renderer){
     SDL_UpdateTexture(texture, nullptr, pixels, width * sizeof(uint16_t));
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);

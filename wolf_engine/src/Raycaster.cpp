@@ -17,10 +17,12 @@ void Raycaster::Render(Camera* camera, Map* map, Rasterizer* rasterizer){
     int mapShift = map->GetMapShift();
 
     float invWidth = 2.0f / (float)scrWidth;
-    uint16_t color;
-    int tile;
 
+    #pragma omp parallel for
     for(int x = 0; x < scrWidth; x++){
+        uint16_t color;
+        int tile;
+
         float cameraX = invWidth * x  - 1.0f;                       // normalize camera plane
 
         Vector2 rayDir = camera->dir + (camera->plane * cameraX);   // parametric equation of line P(t) = C + (V * t)
@@ -95,7 +97,15 @@ void Raycaster::Render(Camera* camera, Map* map, Rasterizer* rasterizer){
         int drawEnd = (scrHeight >> 1) + (vertHeight >> 1);
         if(drawEnd >= scrHeight) drawEnd = scrHeight - 1;
         
-        color = (tile == 1) ? (0xF800) : (0x07E0);
+        switch(tile) {
+            case 1:  color = 0xF800; break; // Red
+            case 2:  color = 0x07E0; break; // Green
+            case 3:  color = 0x001F; break; // Blue
+            case 4:  color = 0xFFE0; break; // Yellow
+            case 5:  color = 0xF81F; break; // Purple
+            case 6:  color = 0x07FF; break; // Cyan
+            default: color = 0xFFFF; break; // White
+        }
         if(side == 1) color = (color >> 1) & 0x7BEF;
 
         rasterizer->DrawVLine(x, drawStart, drawEnd, color);

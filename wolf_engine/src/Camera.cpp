@@ -25,15 +25,23 @@ void Camera::Rotate(float angleDelta){
 }
 
 void Camera::Move(float distance, Map* map){
-    Vector2 newPos = pos + (dir * distance);
-    if(map->GetWorldTile(newPos.x, pos.y) == 0) pos.x = newPos.x;
-    if(map->GetWorldTile(pos.x, newPos.y) == 0) pos.y = newPos.y;
+    float moveX = dir.x * distance;
+    float moveY = dir.y * distance;
+
+    float padX = (moveX > 0) ? 0.2f : -0.2f;
+    float padY = (moveY > 0) ? 0.2f : -0.2f;
+
+    if(map->GetWorldTile(pos.x + moveX + padX, pos.y) == 0) pos.x += moveX;
+    if(map->GetWorldTile(pos.x, pos.y + moveY + padY) == 0) pos.y += moveY;
 }
 
 void Camera::Strafe(float distance, Map* map){
-    float newX = pos.x + (-dir.y * distance);
-    float newY = pos.y + (dir.x * distance);
+    float moveX = -dir.y * distance;
+    float moveY = dir.x * distance;
+
+    float padX = (moveX > 0) ? 0.2f : -0.2f;
+    float padY = (moveY > 0) ? 0.2f : -0.2f;
     
-    if(map->GetWorldTile(newX, pos.y) == 0) pos.x = newX;
-    if(map->GetWorldTile(pos.x, newY) == 0) pos.y = newY;
+    if(map->GetWorldTile(pos.x + moveX + padX, pos.y) == 0) pos.x += moveX;
+    if(map->GetWorldTile(pos.x, pos.y + moveY + padY) == 0) pos.y += moveY;
 }

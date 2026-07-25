@@ -12,11 +12,10 @@
 
 const uint16_t GRAY  = 0x4228;
 const uint16_t BROWN = 0x5182;
-const uint16_t RED   = 0xF800;
 
-void HandleInput(Engine& engine, Camera& camera, Map& map){
-    float mvSpeed = 3.0f * engine.GetDeltaTime();
-    int rotSpeed = (int)(1303.79f * engine.GetDeltaTime());     //2x
+void HandleInput(Engine& engine, Camera& camera, Map& map, float dt){
+    float mvSpeed = 3.0f * dt;
+    int rotSpeed = (int)(1303.79f * dt);     //2x
 
     auto& input = engine.GetInput();
 
@@ -35,20 +34,26 @@ int main(){
     Rasterizer rasterizer;
     Camera     camera;
     Engine     engine;
-    Map        map("wolf_game_demo/maps/level1.map", 64);
+    Map        map("pc_demo/maps/level2.map", 16);
 
     engine.Initialize(SCREEN_WIDTH, SCREEN_HEIGHT, "Test");
     rasterizer.Initialize(engine.GetRenderer(), SCREEN_WIDTH, SCREEN_HEIGHT);
     
-    while(engine.IsRunning()){
-        engine.Update();
+    float accumulator = 0.0f;
+    const float FIXED_TIME_STEP = 1.0f / 60.0f; // 60 FPS Physics
 
-        HandleInput(engine, camera, map);
+    while(engine.IsRunning()){
+        engine.Update(); // Updates the raw Delta Time
+        accumulator += engine.GetDeltaTime();
+
+        // Run the physics in strict 16.6ms chunks
+        while(accumulator >= FIXED_TIME_STEP) {
+            HandleInput(engine, camera, map, FIXED_TIME_STEP);
+            accumulator -= FIXED_TIME_STEP;
+        }
 
         rasterizer.ClearHorizon(GRAY, BROWN);
-
         raycaster.Render(&camera, &map, &rasterizer);
-
         rasterizer.Present(engine.GetRenderer());
     }
 

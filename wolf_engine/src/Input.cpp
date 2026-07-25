@@ -44,6 +44,8 @@ Input::Input(){
         previousKeyState.resize(numKey, 0);
     }
 
+    prevGamepadState.resize(SDL_CONTROLLER_BUTTON_MAX, 0);
+
     controller = nullptr;
     if(SDL_NumJoysticks() > 0){
         controller = SDL_GameControllerOpen(0);
@@ -69,11 +71,9 @@ void Input::Update(){
 
     if(controller != nullptr){
         for(int i = 0; i < SDL_CONTROLLER_BUTTON_MAX; i++){
-            previousKeyState[i] = SDL_GameControllerGetButton(controller, (SDL_GameControllerButton)i);
+            prevGamepadState[i] = SDL_GameControllerGetButton(controller, (SDL_GameControllerButton)i);
         }
     }
-
-    SDL_PumpEvents();
 }
 
 bool Input::isKeyDown(Keys key){

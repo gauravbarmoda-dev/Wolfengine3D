@@ -39,8 +39,9 @@ struct Vector2 {
     Vector2 operator*(float scaler) {
         return Vector2(x * scaler, y * scaler);
     }
-    Vector2 operator/(float scaler) {
-        return (scaler != 0.0f) ? Vector2(x / scaler, y / scaler) : Vector2(0.0f, 0.0f);
+    Vector2 operator/(float scaler) const{
+        float inv = 1.0f / scaler;
+        return (scaler != 0.0f) ? Vector2(x * inv, y * inv) : Vector2(0.0f, 0.0f);
     }
     Vector2 Normal() {
         return Vector2(-y, x);
