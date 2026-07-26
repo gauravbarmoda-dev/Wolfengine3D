@@ -1,10 +1,9 @@
 #ifndef RAYCASTER_H
 #define RAYCASTER_H
 
-#include <vector>
-
-class Camera;
 class Rasterizer;
+class Palette;
+class Camera;
 class Map;
 
 class Raycaster{
@@ -18,7 +17,7 @@ public:
     Raycaster(int w, int h);
     ~Raycaster();
 
-    void Render(Camera *camera, Map* map, Rasterizer* rasterizer);
+    void Render(Camera *camera, Map* map, Palette* palette, Rasterizer* rasterizer);
 };
 
 #endif

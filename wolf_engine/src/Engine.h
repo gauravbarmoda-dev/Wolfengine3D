@@ -1,15 +1,21 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
+#include <SDL2/SDL_render.h>
+#include <cstdint>
 #include "Input.h"
 
 struct SDL_Window;
+struct SDL_Texture;
 struct SDL_Renderer;
 
 class Engine{
 private:
     SDL_Window*   window;
     SDL_Renderer* renderer;
+    SDL_Texture*  texture;
+
+    int scrWidth;
 
     Input input;
 
@@ -31,6 +37,7 @@ public:
 
     bool Initialize(int width, int height, const char* title);
     void Update();
+    void Present(const uint16_t * pixels);
     void Wait();
     void Quit();
 
@@ -41,6 +48,6 @@ public:
     void Stop()                 {isRunning = false;}
     float GetDeltaTime()        {return deltaTime;}
     Input& GetInput()           {return input;}
-    SDL_Renderer* GetRenderer() {return renderer;}
+    //SDL_Renderer* GetRenderer() {return renderer;}
 };
 #endif

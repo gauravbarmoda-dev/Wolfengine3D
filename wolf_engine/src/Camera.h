@@ -1,9 +1,8 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "mathutil.h"
+#include "Mathutil.h"
 
-class Map;
 class Camera{
 public:
     Vector2 pos;
@@ -20,8 +19,6 @@ public:
     void Update();
 
     void Rotate         (float angleDelta);
-    void Move           (float distance, Map* map);
-    void Strafe         (float distance, Map* map);
 }; 
 
 #endif

@@ -1,33 +1,18 @@
 #include "Font.h"
 #include "Rasterizer.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_render.h>
 #include <iostream>
 
-Rasterizer::Rasterizer() : width(0), height(0), texture(nullptr), pixels(nullptr) {}
+Rasterizer::Rasterizer() : width(0), height(0), pixels(nullptr) {}
 
 Rasterizer::~Rasterizer(){
     CleanUp();
 }
 
-bool Rasterizer::Initialize(SDL_Renderer* renderer, int scrWidth, int scrHeight){
+bool Rasterizer::Initialize(int scrWidth, int scrHeight){
     width  = scrWidth;
     height = scrHeight;
 
     pixels = new uint16_t[width * height];
-
-    texture = SDL_CreateTexture(
-        renderer,
-        SDL_PIXELFORMAT_RGB565,
-        SDL_TEXTUREACCESS_STREAMING,
-        width, height
-    );
-
-    if(!texture){
-        std::cerr << "Failed to create Texture: " << SDL_GetError() << "\n";
-        return false;
-    }
-
     return true;
 }
 
@@ -35,10 +20,6 @@ void Rasterizer::CleanUp(){
     if(pixels != nullptr){
         delete[] pixels;
         pixels = nullptr;
-    }
-    if(texture != nullptr){
-        SDL_DestroyTexture(texture);
-        texture = nullptr;
     }
     return;
 }
@@ -116,10 +97,4 @@ void Rasterizer::DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16
         DrawHLine(y + h - 1, x, x + w, color);
     }
     return;
-}
-
-void Rasterizer::Present(SDL_Renderer* renderer){
-    SDL_UpdateTexture(texture, nullptr, pixels, width * sizeof(uint16_t));
-    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
-    SDL_RenderPresent(renderer);
 }

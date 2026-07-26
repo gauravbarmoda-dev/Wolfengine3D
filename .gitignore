@@ -50,5 +50,5 @@ vgcore.*
 # ---------------------------------
 # Local Files (Ignored for privacy)
 # ---------------------------------
-Makefile
+.env
 game

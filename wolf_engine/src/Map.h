@@ -2,7 +2,6 @@
 #define MAP_H
 
 #include <vector>
-#include <string>
 
 class Map{
 private:
@@ -12,7 +11,7 @@ private:
     std::vector <unsigned char> mapData;
 
 public:
-    Map(const std::string& filePath, int requestedSize);
+    Map(int requestedSize);
     ~Map();
 
     void SetTile(int x, int y, char tileID);

@@ -3,13 +3,15 @@
 #include <SDL2/SDL_timer.h>
 #include <iostream>
 
-Engine::Engine() : window(nullptr), renderer(nullptr), isRunning(false), lastFrameTime(0), deltaTime(0.0f) {}
+Engine::Engine() : window(nullptr), renderer(nullptr), texture(nullptr), scrWidth(0),
+                   isRunning(false), lastFrameTime(0), deltaTime(0.0f) {}
 
 Engine::~Engine() {
     Quit();
 }
 
 bool Engine::Initialize(int width, int height, const char* title){
+    scrWidth = width;
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0){ 
         std::cerr << "SDL Failed to Initialize: " << SDL_GetError() << "\n";
         return false;
@@ -35,7 +37,19 @@ bool Engine::Initialize(int width, int height, const char* title){
     if(!renderer){
         std::cerr << "Failed to create SDL renderer: " << SDL_GetError() << "\n";
     }
-    
+
+    texture = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_RGB565,
+        SDL_TEXTUREACCESS_STREAMING,
+        width, height
+    );
+
+    if(!texture) {
+        std::cerr << "Failed to create Texture: " << SDL_GetError() << "\n";
+        return false;
+    }
+
     isRunning = true;
     lastFrameTime = SDL_GetPerformanceCounter();
     performanceFreq = 1.0f / (float)SDL_GetPerformanceFrequency();
@@ -43,7 +57,11 @@ bool Engine::Initialize(int width, int height, const char* title){
     return true;
 }
 
-void Engine::Quit(){
+void Engine::Quit(){    
+    if(texture){
+        SDL_DestroyTexture(texture);
+        texture = nullptr;
+    }
     if(renderer){
         SDL_DestroyRenderer(renderer);
         renderer = nullptr;
@@ -96,3 +114,8 @@ void Engine::Wait(){
     }
 }
 
+void Engine::Present(const uint16_t* pixels){
+    SDL_UpdateTexture(texture, nullptr, pixels, scrWidth * sizeof(uint16_t));
+    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    SDL_RenderPresent(renderer);
+}

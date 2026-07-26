@@ -5,22 +5,18 @@
 #include <cstdint>
 #include <algorithm>
 
-struct SDL_Renderer;
-struct SDL_Texture;
-
 class Rasterizer{
 private:
     int width;
     int height;
 
-    SDL_Texture* texture;
     uint16_t* pixels;
 
 public:
     Rasterizer();
     ~Rasterizer();
 
-    bool Initialize(SDL_Renderer* renderer, int scrWidth, int scrHeight);
+    bool Initialize(int scrWidth, int scrHeight);
 
     void CleanUp();
 
@@ -54,10 +50,9 @@ public:
         std::fill(pixels + startIndex, pixels + endIndex, color);
     }
 
-    void Present(SDL_Renderer* renderer);
-
     int GetWidth()  {return width;}
     int GetHeight() {return height;}
+    const uint16_t* GetPixels() const {return pixels;}
 };
 
 #endif

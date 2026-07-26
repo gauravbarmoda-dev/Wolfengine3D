@@ -1,8 +1,9 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-#include <SDL2/SDL_gamecontroller.h>
 #include <vector>
+
+struct _SDL_GameController;
 
 enum class Keys{
     W, A, S, D, E, Q, R
@@ -18,7 +19,7 @@ private:
     std::vector<unsigned char> previousKeyState;
     std::vector<unsigned char> prevGamepadState;
 
-    SDL_GameController* controller;
+    _SDL_GameController* controller;
     const unsigned char* sdlKey;
     int numKey;
 

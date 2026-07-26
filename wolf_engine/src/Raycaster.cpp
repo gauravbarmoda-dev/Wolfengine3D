@@ -1,5 +1,6 @@
 #include "Raycaster.h"
 #include "Rasterizer.h"
+#include "Palette.h"
 #include "Camera.h"
 #include "Map.h"
 #include <cstdint>
@@ -12,7 +13,7 @@ Raycaster::~Raycaster(){
     delete[] zBuffer;
 }
 
-void Raycaster::Render(Camera* camera, Map* map, Rasterizer* rasterizer){
+void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* rasterizer){
     const unsigned char* mapData = map->GetRawData();
     int mapShift = map->GetMapShift();
 
@@ -96,16 +97,9 @@ void Raycaster::Render(Camera* camera, Map* map, Rasterizer* rasterizer){
 
         int drawEnd = (scrHeight >> 1) + (vertHeight >> 1);
         if(drawEnd >= scrHeight) drawEnd = scrHeight - 1;
+
+        color = palette->GetColor(tile);
         
-        switch(tile) {
-            case 1:  color = 0xF800; break; // Red
-            case 2:  color = 0x07E0; break; // Green
-            case 3:  color = 0x001F; break; // Blue
-            case 4:  color = 0xFFE0; break; // Yellow
-            case 5:  color = 0xF81F; break; // Purple
-            case 6:  color = 0x07FF; break; // Cyan
-            default: color = 0xFFFF; break; // White
-        }
         if(side == 1) color = (color >> 1) & 0x7BEF;
 
         rasterizer->DrawVLine(x, drawStart, drawEnd, color);
