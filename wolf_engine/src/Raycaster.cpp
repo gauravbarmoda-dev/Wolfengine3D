@@ -1,5 +1,6 @@
-#include "Raycaster.h"
 #include "Rasterizer.h"
+#include "Raycaster.h"
+#include "AssetMgr.h"
 #include "Palette.h"
 #include "Camera.h"
 #include "Map.h"
@@ -13,7 +14,7 @@ Raycaster::~Raycaster(){
     delete[] zBuffer;
 }
 
-void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* rasterizer){
+void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* rasterizer, AssetMgr* assets){
     const unsigned char* mapData = map->GetRawData();
     int mapShift = map->GetMapShift();
 
@@ -62,7 +63,7 @@ void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* r
         int mapIndex = (mapY << mapShift) + mapX;
         int stepYIndex = stepY << mapShift;
 
-        int side = 0;           // records which axis the ray collided with last. 0 for x, 1 for y
+        bool side = 0;           // records which axis the ray collided with last. 0 for x, 1 for y
         bool rayHit = false;
 
         while(!rayHit){
@@ -98,10 +99,39 @@ void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* r
         int drawEnd = (scrHeight >> 1) + (vertHeight >> 1);
         if(drawEnd >= scrHeight) drawEnd = scrHeight - 1;
 
-        color = palette->GetColor(tile);
-        
-        if(side == 1) color = (color >> 1) & 0x7BEF;
+        //calculate where the ray hit the wall exactly
+        float wallX = (side == 0) ?     //0 - vertical wall, 1- horizontal wall
+                      (camera->pos.y + rayDir.y * wallDistance) :
+                      (camera->pos.x + rayDir.x * wallDistance)
+        ;
 
-        rasterizer->DrawVLine(x, drawStart, drawEnd, color);
+        wallX -= (int)wallX;    // % of the way across the wall
+
+        Texture* tex = assets->GetTexture(tile);
+
+        if(tex != nullptr){
+            int texX = (int)(wallX * (float)tex->width);    // % -> coordinate
+
+            // flipping the texture if we looking at the back of the wall
+            if(side == 0 && rayDir.x < 0) texX = tex->width - texX - 1;
+            if(side == 1 && rayDir.y > 0) texX = tex->width - texX - 1;
+
+            float exactVertHeight = (float)scrHeight / wallDistance;
+            float step = (float)tex->height / exactVertHeight;
+
+            //drawStart might change if standing too close (line 97)
+            float exactDrawStart = ((float)scrHeight / 2.0f) - (exactVertHeight / 2.0f);
+            float texPos = ((float)drawStart - exactDrawStart) * step;    // screenPixel -> texturePixels
+
+            uint16_t* slice = tex->pixels + (texX * tex->height);   //transposing width
+            
+            rasterizer->DrawTexturedVLine(x, drawStart, drawEnd, texPos, step, slice);
+        }
+        else{
+            color = palette->GetColor(tile);
+            if(side == 1) color = (color >> 1) & 0x7BEF;
+            rasterizer->DrawVLine(x, drawStart, drawEnd, color);
+        }
     }
+
 }

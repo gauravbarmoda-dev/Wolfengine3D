@@ -2,6 +2,7 @@
 #define RAYCASTER_H
 
 class Rasterizer;
+class AssetMgr;
 class Palette;
 class Camera;
 class Map;
@@ -17,7 +18,7 @@ public:
     Raycaster(int w, int h);
     ~Raycaster();
 
-    void Render(Camera *camera, Map* map, Palette* palette, Rasterizer* rasterizer);
+    void Render(Camera* camera, Map* map, Palette* palette, Rasterizer* rasterizer, AssetMgr* assets);
 };
 
 #endif

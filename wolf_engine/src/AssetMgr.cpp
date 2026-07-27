@@ -1,15 +1,29 @@
 #include "AssetMgr.h"
+#include <SDL2/SDL_error.h>
+#include <SDL2/SDL_surface.h>
 #include <fstream>
 #include <iostream>
+#include <cstring>
 #include "Map.h"
 
-AssetMgr::AssetMgr() {}
+AssetMgr::AssetMgr() {
+    for(int i = 0; i < MAX_TILE_SIZE; i++){
+        textures[i] = nullptr;
+    }
+}
 
 AssetMgr::~AssetMgr() {
     for (auto& pair : loadedMaps) {
         delete pair.second;
     }
     loadedMaps.clear();
+
+    for(int i = 0; i < MAX_TILE_SIZE; i++){
+        if(textures[i] != nullptr){
+            delete textures[i];
+            textures[i] = nullptr;
+        }
+    }
 }
 
 Map* AssetMgr::LoadMap(const char* filePath, int requestedSize){                       
@@ -49,4 +63,30 @@ Map* AssetMgr::LoadMap(const char* filePath, int requestedSize){
 
     loadedMaps[pathKey] = newMap;
     return newMap;
+}
+
+Texture* AssetMgr::LoadTexture(unsigned char tileID, const char* filepath){
+    if(textures[tileID] != nullptr) return textures[tileID];
+
+    SDL_Surface* surface = SDL_LoadBMP(filepath);
+    if(!surface){
+        std::cerr << "Failed to load Texture " << filepath << " - " << SDL_GetError() << "\n";
+        return nullptr;
+    }
+
+    SDL_Surface* converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGB565, 0);
+    SDL_FreeSurface(surface);
+    if(!converted) return nullptr;
+
+    Texture* tex = new Texture();
+    tex->width  = converted->h;
+    tex->height = converted->w;
+
+    int numBytes = tex->width * tex->height * sizeof(uint16_t);
+    tex->pixels = new uint16_t[tex->width * tex->height];
+    std::memcpy(tex->pixels, converted->pixels, numBytes);
+
+    SDL_FreeSurface(converted);
+    textures[tileID] = tex;
+    return tex;
 }

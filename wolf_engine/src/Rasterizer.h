@@ -33,7 +33,7 @@ public:
     
     void DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16_t color);
 
-    void DrawTexturedVLine(int x, int startY, int endY, int texID, int texX);
+    void DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice);
 
     inline void DrawVLine(int x, int startY, int endY, uint16_t color){
         int pixIndex = startY * width + x;

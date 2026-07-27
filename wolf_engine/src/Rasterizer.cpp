@@ -98,3 +98,14 @@ void Rasterizer::DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16
     }
     return;
 }
+
+
+void Rasterizer::DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice){
+    int pixIndex = startY * width + x;
+
+    for(int y = startY; y < endY; y++){
+        pixels[pixIndex] = slice[(int)texPos];
+        texPos += texStep;
+        pixIndex += width;
+    }
+}
