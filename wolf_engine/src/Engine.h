@@ -43,11 +43,11 @@ public:
 
     void TargetFPS(int fps) {targetFrameTime = (fps > 0) ? (1.0f/fps) : 0;}
 
-    int GetFPS()                {return curFPS;}
-    bool IsRunning()            {return isRunning;}
-    void Stop()                 {isRunning = false;}
-    float GetDeltaTime()        {return deltaTime;}
-    Input& GetInput()           {return input;}
+    int GetFPS() const {return curFPS;}
+    bool IsRunning() {return isRunning;}
+    void Stop() {isRunning = false;}
+    float GetDeltaTime() {return deltaTime;}
+    Input& GetInput() {return input;}
     //SDL_Renderer* GetRenderer() {return renderer;}
 };
 #endif

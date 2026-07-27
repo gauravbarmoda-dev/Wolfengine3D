@@ -50,8 +50,8 @@ public:
         std::fill(pixels + startIndex, pixels + endIndex, color);
     }
 
-    int GetWidth()  {return width;}
-    int GetHeight() {return height;}
+    int GetWidth() const {return width;}
+    int GetHeight() const {return height;}
     const uint16_t* GetPixels() const {return pixels;}
 };
 

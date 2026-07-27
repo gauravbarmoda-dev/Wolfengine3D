@@ -5,7 +5,7 @@
 #include "../wolf_engine/src/Camera.h"
 
 Player::Player(Vector2 startPos, float startAngle, float h) 
-    : position(startPos), angle(startAngle), moveSpeed(4.0f), rotSpeed(1400.0f), hitbox(h) {}
+    : position(startPos), angle(startAngle), moveSpeed(4.0f), rotSpeed(1400.0f), hitbox(h) {}   // 1400 = 123 degree/sec
 
 void Player::HandleInput(Engine& engine, float dt, Map* map) {
     if (engine.GetInput().isGamepadDown(Gamepad::Select) && engine.GetInput().isGamepadDown(Gamepad::Start)) {
@@ -18,16 +18,6 @@ void Player::HandleInput(Engine& engine, float dt, Map* map) {
 
     float moveStep = moveSpeed * dt;
     float rotStep  = rotSpeed * dt;
-
-    if (input.isKeyPressed(Keys::R) || input.isGamepadPressed(Gamepad::A) || input.isGamepadPressed(Gamepad::X)) {
-        Vector2 facingDir(fcos((int)angle), fsin((int)angle));
-        int targetX = static_cast<int>(position.x + facingDir.x * 1.2f);
-        int targetY = static_cast<int>(position.y + facingDir.y * 1.2f);
-
-        if (map->GetTile(targetX, targetY) == 3) {
-            map->SetTile(targetX, targetY, 0); // Open the door!
-        }
-    }
 
     if (input.isKeyDown(Keys::Q) || input.isGamepadDown(Gamepad::L1)) angle -= rotStep;
     if (input.isKeyDown(Keys::E) || input.isGamepadDown(Gamepad::R1)) angle += rotStep;

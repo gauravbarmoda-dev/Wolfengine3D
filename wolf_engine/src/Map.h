@@ -20,11 +20,11 @@ public:
     
     int GetHeight() const {return mapSize;}
 
-    const unsigned char* GetRawData(){return mapData.data();}
+    const unsigned char* GetRawData() const {return mapData.data();}
 
     int GetMapShift() {return mapShift;}
 
-    int GetMapMask()  {return mapShift;}
+    int GetMapMask()  {return mapMask;}
 
     inline char GetTile(int x, int y) const{
         return mapData[(y << mapShift) + x];

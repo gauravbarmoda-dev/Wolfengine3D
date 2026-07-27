@@ -34,7 +34,7 @@ Map* AssetMgr::LoadMap(const char* filePath, int requestedSize){
     }
 
     if (requestedSize <= 0 || (requestedSize & (requestedSize - 1)) != 0) {     
-        std::cout << "ERROR: Map size " << requestedSize << " is not a Power of 2! Defaulting to 64." << std::endl;                                               
+        std::cerr << "ERROR: Map size " << requestedSize << " is not a Power of 2! Defaulting to 64." << std::endl;                                               
         requestedSize = 64;                                                     
     }                                                                           
   
@@ -46,7 +46,7 @@ Map* AssetMgr::LoadMap(const char* filePath, int requestedSize){
             for (int x = 0; x < requestedSize; x++){
                 int val;      
                 if (!(in >> val)){
-                    std::cout << "WARNING: Map file corrupted" << std::endl;    
+                    std::cerr << "WARNING: Map file corrupted" << std::endl;    
                     goto end_load;
                 }
                 newMap->SetTile(x, y, (unsigned char)val);
@@ -58,7 +58,7 @@ Map* AssetMgr::LoadMap(const char* filePath, int requestedSize){
         std::cout << "SUCCESS: Loaded " << filePath << " into a " << requestedSize << "x" << requestedSize << std::endl;
     } 
     else {
-        std::cout << "Could not find " << filePath << ". Returning empty map." << std::endl;
+        std::cerr << "Could not find " << filePath << ". Returning empty map." << std::endl;
     }
 
     loadedMaps[pathKey] = newMap;

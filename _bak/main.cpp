@@ -7,11 +7,11 @@
 #include "../wolf_engine/src/Map.h"
 #include "Player.h"
 
-#define SCREEN_WIDTH    640
 #define SCREEN_HEIGHT   480
+#define SCREEN_WIDTH    640
 
-const uint16_t SKY_COLOR   = 0x2945; 
-const uint16_t FLOOR_COLOR = 0x4184;
+const uint16_t BROWN  = 0x4228;
+const uint16_t GRAY = 0x5182;
 
 int main() {
     Raycaster  raycaster(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -20,37 +20,29 @@ int main() {
     Engine     engine;
     AssetMgr   assets;
 
-    if (!engine.Initialize(SCREEN_WIDTH, SCREEN_HEIGHT, "Wolf Engine - 3D Dungeon")) {
-        return -1;
-    }
-
+    if (!engine.Initialize(SCREEN_WIDTH, SCREEN_HEIGHT, "Wolf Engine")) return -1;
     rasterizer.Initialize(SCREEN_WIDTH, SCREEN_HEIGHT);
-    engine.TargetFPS(60);
+    engine.TargetFPS(100);
 
-    Map* map = assets.LoadMap("assets/maps/level2.map", 32);
-
+    Map* map = assets.LoadMap("assets/maps/level1.map", 16);
+    
     assets.LoadTexture(1, "assets/sprites/brick_wall.bmp");
     assets.LoadTexture(2, "assets/sprites/cement_wall.bmp");
+    assets.LoadTexture(3, "assets/sprites/iron_wall.bmp");
     assets.LoadTexture(3, "assets/sprites/wooden_door.bmp");
-    assets.LoadTexture(4, "assets/sprites/iron_wall.bmp");
-    assets.LoadTexture(5, "assets/sprites/iron_wall_disorderd.bmp");
-    assets.LoadTexture(6, "assets/sprites/ancient_wall..bmp");
-    assets.LoadTexture(7, "assets/sprites/pop_wall.bmp");
 
     Camera camera;
-    Player player(Vector2(2.5f, 2.5f), 0.0f, 0.2f);
+    Player player(Vector2(1.5f, 1.5f), 0.0f, 0.2f);
 
-    while (engine.IsRunning()) {
+    while (engine.IsRunning()) {  
         engine.Update();
 
         player.HandleInput(engine, engine.GetDeltaTime(), map);
         player.UpdateCamera(camera);
-
-        rasterizer.ClearHorizon(SKY_COLOR, FLOOR_COLOR);
+        rasterizer.ClearHorizon(GRAY, BROWN);
         raycaster.Render(&camera, map, &palette, &rasterizer, &assets);
-
         rasterizer.DrawFPS(engine.GetFPS(), 10, 10, 0xFFFF);
-
+        
         engine.Present(rasterizer.GetPixels());
         engine.Wait();
     }

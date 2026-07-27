@@ -89,7 +89,7 @@ void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* r
         float wallDistance = (side == 0) ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);       
         if(wallDistance <= 0.0f) wallDistance = 0.3f;        
 
-        zBuffer[x] = wallDistance;
+        //zBuffer[x] = wallDistance;
 
         int vertHeight = (int)(scrHeight / wallDistance);
 

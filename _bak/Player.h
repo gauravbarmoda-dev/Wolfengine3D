@@ -17,7 +17,7 @@ private:
     float hitbox;
 
 public:
-    Player(Vector2 startPos, float startAngle, float h);
+    Player(Vector2 startPos, float startAngle, float hitbox);
     ~Player() = default;
     
     void HandleInput(Engine& engine, float dt, Map* map);

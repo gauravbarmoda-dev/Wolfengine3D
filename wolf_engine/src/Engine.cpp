@@ -36,6 +36,7 @@ bool Engine::Initialize(int width, int height, const char* title){
     
     if(!renderer){
         std::cerr << "Failed to create SDL renderer: " << SDL_GetError() << "\n";
+        return false;
     }
 
     texture = SDL_CreateTexture(

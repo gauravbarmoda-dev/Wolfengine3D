@@ -17,7 +17,7 @@ inline float fcos(int index){
         }
         return arr;
     }();
-    return cos_lut[index & TRIG_LUT_MASK]; 
+    return cos_lut[(index - 1024) & TRIG_LUT_MASK]; 
 }
 
 inline float fsin(int index){
@@ -30,13 +30,13 @@ struct Vector2 {
     Vector2() : x(0.0f), y(0.0f) {}
     Vector2(float a, float b) : x(a), y(b) {}
 
-    Vector2 operator+(Vector2 other) {
+    Vector2 operator+(const Vector2& other) const {
         return Vector2(x + other.x, y + other.y);
     }
-    Vector2 operator-(Vector2 other) {
+    Vector2 operator-(const Vector2& other) const {
         return Vector2(x - other.x, y - other.y);
     }
-    Vector2 operator*(float scaler) {
+    Vector2 operator*(float scaler) const {
         return Vector2(x * scaler, y * scaler);
     }
     Vector2 operator/(float scaler) const{
