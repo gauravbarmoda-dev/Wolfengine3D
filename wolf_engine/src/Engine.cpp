@@ -53,7 +53,7 @@ bool Engine::Initialize(int width, int height, const char* title){
 
     isRunning = true;
     lastFrameTime = SDL_GetPerformanceCounter();
-    performanceFreq = 1.0f / (float)SDL_GetPerformanceFrequency();
+    performanceFreq = 1.0f / (double)SDL_GetPerformanceFrequency();
 
     return true;
 }
@@ -86,7 +86,7 @@ void Engine::Update(){
     }
 
     uint64_t currentFrameTime = SDL_GetPerformanceCounter();
-    deltaTime = (float)(currentFrameTime - lastFrameTime) * performanceFreq;
+    deltaTime = static_cast<float>((double)(currentFrameTime - lastFrameTime) * performanceFreq);
     lastFrameTime = currentFrameTime;
 
     frameCount++;

@@ -1,7 +1,6 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include <SDL2/SDL_render.h>
 #include <cstdint>
 #include "Input.h"
 
@@ -23,7 +22,7 @@ private:
 
     uint64_t lastFrameTime;
     float deltaTime;
-    float performanceFreq;
+    double performanceFreq;
 
     float targetFrameTime = 0.0f;
 
@@ -48,6 +47,5 @@ public:
     void Stop() {isRunning = false;}
     float GetDeltaTime() {return deltaTime;}
     Input& GetInput() {return input;}
-    //SDL_Renderer* GetRenderer() {return renderer;}
 };
 #endif

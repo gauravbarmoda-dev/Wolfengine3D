@@ -22,9 +22,9 @@ public:
 
     const unsigned char* GetRawData() const {return mapData.data();}
 
-    int GetMapShift() {return mapShift;}
+    int GetMapShift() const {return mapShift;}
 
-    int GetMapMask()  {return mapMask;}
+    int GetMapMask() const {return mapMask;}
 
     inline char GetTile(int x, int y) const{
         return mapData[(y << mapShift) + x];

@@ -25,7 +25,7 @@ int main() {
     }
 
     rasterizer.Initialize(SCREEN_WIDTH, SCREEN_HEIGHT);
-    engine.TargetFPS(60);
+    engine.TargetFPS(1000);
 
     Map* map = assets.LoadMap("assets/maps/level2.map", 32);
 
@@ -34,8 +34,9 @@ int main() {
     assets.LoadTexture(3, "assets/sprites/wooden_door.bmp");
     assets.LoadTexture(4, "assets/sprites/iron_wall.bmp");
     assets.LoadTexture(5, "assets/sprites/iron_wall_disorderd.bmp");
-    assets.LoadTexture(6, "assets/sprites/ancient_wall..bmp");
+    assets.LoadTexture(6, "assets/sprites/ancient_wall.bmp");
     assets.LoadTexture(7, "assets/sprites/pop_wall.bmp");
+    assets.LoadTexture(8, "assets/sprites/floor_grass.bmp");
 
     Camera camera;
     Player player(Vector2(2.5f, 2.5f), 0.0f, 0.2f);
@@ -44,13 +45,18 @@ int main() {
         engine.Update();
 
         player.HandleInput(engine, engine.GetDeltaTime(), map);
+
         player.UpdateCamera(camera);
 
-        rasterizer.ClearHorizon(SKY_COLOR, FLOOR_COLOR);
-        raycaster.Render(&camera, map, &palette, &rasterizer, &assets);
+        raycaster.CalculateColumnGeometry(&camera, map);
 
-        rasterizer.DrawFPS(engine.GetFPS(), 10, 10, 0xFFFF);
+        raycaster.CalculateRowGeometry(&camera);
 
+        rasterizer.DrawWalls(raycaster.GetColBuffer(), &assets, &palette);
+
+        rasterizer.DrawTexturedHorizon(raycaster.GetColBuffer(), raycaster.GetRowBuffer(), assets.GetTexture(8), assets.GetTexture(2));
+
+        rasterizer.DrawFPS(engine.GetFPS(), 10, 10, 0xF800);
         engine.Present(rasterizer.GetPixels());
         engine.Wait();
     }

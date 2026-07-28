@@ -1,9 +1,16 @@
 #ifndef RASTERIZER_H
 #define RASTERIZER_H
 
+#include "AssetMgr.h"
+#include "Camera.h"
+#include "Raycaster.h"
 #include <string>
 #include <cstdint>
 #include <algorithm>
+
+struct ColumnGeometry;
+class AssetMgr;
+class Palette;
 
 class Rasterizer{
 private:
@@ -21,19 +28,16 @@ public:
     void CleanUp();
 
     void Clear(uint16_t color);
-    void ClearHorizon(uint16_t ceil, uint16_t floor);
 
     void DrawPixel(int x, int y, uint16_t color);
+    
+    void DrawFPS(int fps, int x, int y, uint16_t color);
 
     void DrawChar(int x, int y, char c, uint16_t color);
     
     void DrawStr(int x, int y, const std::string& s, uint16_t color);
-
-    void DrawFPS(int fps, int x, int y, uint16_t color);
     
     void DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16_t color);
-
-    void DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice);
 
     inline void DrawVLine(int x, int startY, int endY, uint16_t color){
         int pixIndex = startY * width + x;
@@ -49,6 +53,14 @@ public:
 
         std::fill(pixels + startIndex, pixels + endIndex, color);
     }
+
+    void DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice);
+    
+    void DrawWalls(ColumnGeometry* colBuffer, AssetMgr* assets, Palette* palette);
+
+    void DrawHorizon(ColumnGeometry* colBuffer, uint16_t ceil, uint16_t floor);
+
+    void DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* rowBuffer, Texture* floor, Texture* ceil);
 
     int GetWidth() const {return width;}
     int GetHeight() const {return height;}

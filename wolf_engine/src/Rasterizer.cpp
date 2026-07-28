@@ -1,5 +1,10 @@
+#include "AssetMgr.h"
 #include "Font.h"
+#include "Palette.h"
+#include "Raycaster.h"
 #include "Rasterizer.h"
+#include <cmath>
+#include <cstdint>
 #include <iostream>
 
 Rasterizer::Rasterizer() : width(0), height(0), pixels(nullptr) {}
@@ -27,14 +32,6 @@ void Rasterizer::CleanUp(){
 void Rasterizer::Clear(uint16_t color){
     int size = width * height;
     std::fill_n(pixels, size, color);
-}
-
-void Rasterizer::ClearHorizon(uint16_t ceil, uint16_t floor){
-    int totalPixels = width * height;
-    int halfPixels  = totalPixels >> 1;
-
-    std::fill_n(pixels, halfPixels, ceil);
-    std::fill_n(pixels + halfPixels, halfPixels, floor);
 }
 
 void Rasterizer::DrawPixel(int x, int y, uint16_t color){
@@ -102,12 +99,85 @@ void Rasterizer::DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16
 
 void Rasterizer::DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice){
     int pixIndex = startY * width + x;
-    int32_t fixedPos  = (int32_t)(texPos * 65535.0f);
+    int32_t fixedPos  = (int32_t)(texPos * 65536.0f);
     int32_t fixedStep = (int32_t)(texStep * 65536.0f);
 
     for(int y = startY; y < endY; y++){
         pixels[pixIndex] = slice[fixedPos >> 16];
         fixedPos += fixedStep;
         pixIndex += width;
+    }
+}
+
+void Rasterizer::DrawWalls(ColumnGeometry* colBuffer, AssetMgr* assets, Palette* palette){
+    #pragma omp parallel for schedule(static, 160)
+    for(int x = 0; x < width; x++){
+        ColumnGeometry& column = colBuffer[x];
+
+        Texture* tex = assets->GetTexture(column.tileID);
+
+        if(tex != nullptr){
+            int texX = (float)(column.wallX * tex->width);
+        
+            float exactVertHeight = (float)height / column.distance;
+            float step = (float)tex->height / exactVertHeight;
+            float exactDrawStart = ((float)height / 2.0f) - (exactVertHeight / 2.0f);
+
+            float texPos = ((float)column.drawStart - exactDrawStart) * step;
+    
+            uint16_t* slice = tex->pixels + (texX * tex->height);
+
+            DrawTexturedVLine(x, column.drawStart, column.drawEnd, texPos, step, slice);
+        }
+        else{
+            uint16_t color = palette->GetColor(column.tileID);
+            if(column.side == 1) color = (color >> 1) & 0x7BEF;
+            DrawVLine(x, column.drawStart, column.drawEnd, color);
+        }
+    }
+}
+
+void Rasterizer::DrawHorizon(ColumnGeometry* colBuffer, uint16_t ceil, uint16_t floor){
+    for(int x = 0; x < width; x++){
+        ColumnGeometry& col = colBuffer[x];
+
+        DrawVLine(x, 0, col.drawStart, ceil);
+        DrawVLine(x, col.drawEnd, height, floor);
+    } 
+}
+
+void Rasterizer::DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* rowBuffer, Texture* floorTex, Texture* ceilTex){
+    if(!floorTex || !ceilTex) return;
+
+    int horizon = height >> 1;
+    
+    #pragma omp parallel for schedule(static)
+    for(int y = horizon + 1; y < height; y++){
+        int index = y - (horizon + 1);
+
+        int32_t floorX = rowBuffer[index].startFloorX;
+        int32_t floorY = rowBuffer[index].startFloorY;
+        int32_t stepX = rowBuffer[index].stepX;
+        int32_t stepY = rowBuffer[index].stepY;
+
+        for(int x = 0; x < width; x++){
+            if(y >= colBuffer[x].drawEnd){
+                int tx = (floorX >> 10) & (floorTex->width - 1);
+                int ty = (floorY >> 10) & (floorTex->height - 1);
+
+                DrawPixel(x, y, floorTex->pixels[ty * floorTex->width + tx]);
+            }
+
+            int ceilY = height - y - 1;
+            if(ceilY < colBuffer[x].drawStart){
+                int tx = (floorX >> 10) & (ceilTex->width - 1);
+                int ty = (floorY >> 10) & (ceilTex->height - 1);
+
+                DrawPixel(x, ceilY, ceilTex->pixels[ty * ceilTex->width + tx]);
+            }
+
+            floorX += stepX;
+            floorY += stepY;
+        }
     }
 }

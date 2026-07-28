@@ -1,30 +1,36 @@
-#include "Rasterizer.h"
 #include "Raycaster.h"
-#include "AssetMgr.h"
-#include "Palette.h"
 #include "Camera.h"
 #include "Map.h"
 #include <cstdint>
 
 Raycaster::Raycaster(int w, int h) : scrWidth(w), scrHeight(h) {
-    zBuffer = new float[scrWidth];
+    colBuffer = new ColumnGeometry[scrWidth];
+    
+    int halfHeight = scrHeight >> 1;
+    rowBuffer = new RowGeometry[halfHeight];
+
+    recipLUT = new float[halfHeight];
+    for(int y = 1; y < halfHeight; y++){
+        recipLUT[y] = (0.5f * scrHeight) / (float)y;
+    }
 }
 
 Raycaster::~Raycaster(){
-    delete[] zBuffer;
+    delete[] colBuffer;
+    delete[] rowBuffer;
+    delete[] recipLUT;
 }
 
-void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* rasterizer, AssetMgr* assets){
+void Raycaster::CalculateColumnGeometry(Camera* camera, Map* map){
+    
     const unsigned char* mapData = map->GetRawData();
+    
     int mapShift = map->GetMapShift();
 
     float invWidth = 2.0f / (float)scrWidth;
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for(int x = 0; x < scrWidth; x++){
-        uint16_t color;
-        int tile;
-
         float cameraX = invWidth * x  - 1.0f;                       // normalize camera plane
 
         Vector2 rayDir = camera->dir + (camera->plane * cameraX);   // parametric equation of line P(t) = C + (V * t)
@@ -64,9 +70,8 @@ void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* r
         int stepYIndex = stepY << mapShift;
 
         bool side = 0;           // records which axis the ray collided with last. 0 for x, 1 for y
-        bool rayHit = false;
-
-        while(!rayHit){
+        unsigned char tile = 0;
+        while(1){
             if(sideDist.x < sideDist.y){
                 sideDist.x += deltaDist.x;
                 mapIndex +=stepX;
@@ -79,9 +84,7 @@ void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* r
             }
             
             tile = mapData[mapIndex];
-            if(tile > 0){
-                rayHit = true;
-            }
+            if(tile > 0) break;
         }
 
         // perpendicular distance to the wall, 
@@ -107,31 +110,46 @@ void Raycaster::Render(Camera* camera, Map* map, Palette* palette, Rasterizer* r
 
         wallX -= (int)wallX;    // % of the way across the wall
 
-        Texture* tex = assets->GetTexture(tile);
-
-        if(tex != nullptr){
-            int texX = (int)(wallX * (float)tex->width);    // % -> coordinate
-
-            // flipping the texture if we looking at the back of the wall
-            if(side == 0 && rayDir.x < 0) texX = tex->width - texX - 1;
-            if(side == 1 && rayDir.y > 0) texX = tex->width - texX - 1;
-
-            float exactVertHeight = (float)scrHeight / wallDistance;
-            float step = (float)tex->height / exactVertHeight;
-
-            //drawStart might change if standing too close (line 97)
-            float exactDrawStart = ((float)scrHeight / 2.0f) - (exactVertHeight / 2.0f);
-            float texPos = ((float)drawStart - exactDrawStart) * step;    // screenPixel -> texturePixels
-
-            uint16_t* slice = tex->pixels + (texX * tex->height);   //transposing width
-            
-            rasterizer->DrawTexturedVLine(x, drawStart, drawEnd, texPos, step, slice);
-        }
-        else{
-            color = palette->GetColor(tile);
-            if(side == 1) color = (color >> 1) & 0x7BEF;
-            rasterizer->DrawVLine(x, drawStart, drawEnd, color);
-        }
+        // flipping the texture if we looking at the back of the wall
+        if(side == 0 && rayDir.x < 0) wallX = 1.0f - wallX;
+        if(side == 1 && rayDir.y > 0) wallX =  1.0f - wallX;
+        
+        colBuffer[x].distance  = wallDistance; 
+        colBuffer[x].drawStart = drawStart; 
+        colBuffer[x].drawEnd   = drawEnd; 
+        colBuffer[x].tileID    = tile; 
+        colBuffer[x].wallX     = wallX; 
+        colBuffer[x].side      = side;
     }
+}
 
+void Raycaster::CalculateRowGeometry(Camera* camera){
+    int horizon = scrHeight >> 1;
+
+    float rayDirX0 = camera->dir.x - camera->plane.x;
+    float rayDirY0 = camera->dir.y - camera->plane.y;
+    float rayDirX1 = camera->dir.x + camera->plane.x;
+    float rayDirY1 = camera->dir.y + camera->plane.y;
+
+    #pragma omp parallel for schedule(static)
+    for(int y = horizon + 1; y < scrHeight; y++){
+        int p = y - horizon;          //cam position from the centre of screen
+
+        float rowDistance = recipLUT[p];   //distance from cam to floor
+    
+        // how far we have to move in map for every 1 pixel on the screen
+        float floorStepX = rowDistance * (rayDirX1 - rayDirX0) / scrWidth;
+        float floorStepY = rowDistance * (rayDirY1 - rayDirY0) / scrWidth;
+
+        // starting point
+        float startFloorX = camera->pos.x + rowDistance * rayDirX0;
+        float startFloorY = camera->pos.y + rowDistance * rayDirY0;
+
+        int index = y - (horizon + 1);
+        
+        rowBuffer[index].startFloorX = (int32_t)(startFloorX * 65536.0f);
+        rowBuffer[index].startFloorY = (int32_t)(startFloorY * 65536.0f);
+        rowBuffer[index].stepX = (int32_t)(floorStepX * 65536.0f);
+        rowBuffer[index].stepY = (int32_t)(floorStepY * 65536.0f);
+    }
 }

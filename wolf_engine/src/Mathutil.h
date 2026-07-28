@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <array>
+#include <cstring>
 
 inline float fcos(int index){
     static const auto cos_lut = [](){
@@ -17,7 +18,7 @@ inline float fcos(int index){
         }
         return arr;
     }();
-    return cos_lut[(index - 1024) & TRIG_LUT_MASK]; 
+    return cos_lut[(index - 1024 + TRIG_LUT_SIZE) & TRIG_LUT_MASK]; 
 }
 
 inline float fsin(int index){
@@ -48,6 +49,13 @@ struct Vector2 {
     }
     float Dot(Vector2 other) {
         return x * other.x + y * other.y;
+    }
+
+    inline int FastFloatToInt(float f){
+        f += 12582912.0f;   //only work for =ve numbers
+        int r;
+        std::memcpy(&r, &f, sizeof(int));
+        return r;
     }
 };
 

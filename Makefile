@@ -39,7 +39,7 @@ clean:
 	rm -f $(OBJ) $(TARGET)
 
 run: $(TARGET)
-	OMP_WAIT_POLICY=PASSIVE OMP_NUM_THREADS=4 OMP_STACKSIZE=512k ./$(TARGET)
+	OMP_WAIT_POLICY=PASSIVE OMP_NUM_THREADS=4 OMP_STACKSIZE=128k ./$(TARGET)
 
 deploy: $(TARGET)
 ifndef DEVICE_IP
@@ -50,3 +50,4 @@ endif
 	scp -r assets/* root@$(DEVICE_IP):/userdata/roms/ports/wolf_game/assets/
 
 .PHONY: all clean run deploy
+
