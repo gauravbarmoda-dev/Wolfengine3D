@@ -10,25 +10,20 @@ struct SDL_Renderer;
 
 class Engine{
 private:
+    Input input;
     SDL_Window*   window;
     SDL_Renderer* renderer;
     SDL_Texture*  texture;
-
-    int scrWidth;
-
-    Input input;
-
-    bool isRunning;
-
     uint64_t lastFrameTime;
-    float deltaTime;
     double performanceFreq;
-
-    float targetFrameTime = 0.0f;
-
-    float fpsTimer = 0.0f;
+    
+    int scrWidth;
     int frameCount = 0;
     int curFPS     = 0;
+    float deltaTime;
+    float targetFrameTime = 0.0f;
+    float fpsTimer = 0.0f;
+    bool isRunning;
 
 public:
     Engine();

@@ -98,19 +98,22 @@ void Rasterizer::DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16
 
 
 void Rasterizer::DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice){
+    uint16_t* __restrict__ dst = pixels;
+    const uint16_t* __restrict__ src = slice;
+
     int pixIndex = startY * width + x;
     int32_t fixedPos  = (int32_t)(texPos * 65536.0f);
     int32_t fixedStep = (int32_t)(texStep * 65536.0f);
 
     for(int y = startY; y < endY; y++){
-        pixels[pixIndex] = slice[fixedPos >> 16];
+        dst[pixIndex] = src[fixedPos >> 16];
         fixedPos += fixedStep;
         pixIndex += width;
     }
 }
 
 void Rasterizer::DrawWalls(ColumnGeometry* colBuffer, AssetMgr* assets, Palette* palette){
-    #pragma omp parallel for schedule(static, 160)
+    #pragma omp parallel for schedule(dynamic, 8)
     for(int x = 0; x < width; x++){
         ColumnGeometry& column = colBuffer[x];
 
@@ -120,12 +123,12 @@ void Rasterizer::DrawWalls(ColumnGeometry* colBuffer, AssetMgr* assets, Palette*
             int texX = (float)(column.wallX * tex->width);
         
             float exactVertHeight = (float)height / column.distance;
-            float step = (float)tex->height / exactVertHeight;
-            float exactDrawStart = ((float)height / 2.0f) - (exactVertHeight / 2.0f);
+            float step = column.distance * ((float)tex->height / (float)height);
+            float exactDrawStart = ((float)height * 0.5f) - (exactVertHeight * 0.5f);
 
             float texPos = ((float)column.drawStart - exactDrawStart) * step;
     
-            uint16_t* slice = tex->pixels + (texX * tex->height);
+            uint16_t* slice = tex->pixels + (texX << tex->shift);
 
             DrawTexturedVLine(x, column.drawStart, column.drawEnd, texPos, step, slice);
         }
@@ -150,8 +153,16 @@ void Rasterizer::DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* row
     if(!floorTex || !ceilTex) return;
 
     int horizon = height >> 1;
+
+    // telling compiller that it is safe to use SIMD instructions here
+    uint16_t* __restrict__ dst = pixels;
+    const uint16_t* __restrict__ floorPx = floorTex->pixels;
+    const uint16_t* __restrict__ ceilPx  = ceilTex->pixels;
+
+    int fcoordShift = 16 - floorTex->shift;
+    int cccordShift = 16 - ceilTex->shift;
     
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(dynamic, 8)
     for(int y = horizon + 1; y < height; y++){
         int index = y - (horizon + 1);
 
@@ -160,24 +171,42 @@ void Rasterizer::DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* row
         int32_t stepX = rowBuffer[index].stepX;
         int32_t stepY = rowBuffer[index].stepY;
 
+        int rowOffset = y * width;
+        
         for(int x = 0; x < width; x++){
             if(y >= colBuffer[x].drawEnd){
-                int tx = (floorX >> 10) & (floorTex->width - 1);
-                int ty = (floorY >> 10) & (floorTex->height - 1);
+                int tx = (floorX >> fcoordShift) & (floorTex->mask);
+                int ty = (floorY >> fcoordShift) & (floorTex->mask);
 
-                DrawPixel(x, y, floorTex->pixels[ty * floorTex->width + tx]);
+                dst[rowOffset + x] = floorPx[(ty << floorTex->shift) + tx];
             }
+            floorX += stepX;
+            floorY += stepY;
+        }
+    }    
+    
+    #pragma omp parallel for schedule(dynamic, 8)
+    for(int y = horizon + 1; y < height; y++){
+        int index = y - (horizon + 1);
 
-            int ceilY = height - y - 1;
+        int32_t floorX = rowBuffer[index].startFloorX;
+        int32_t floorY = rowBuffer[index].startFloorY;
+        int32_t stepX = rowBuffer[index].stepX;
+        int32_t stepY = rowBuffer[index].stepY;
+
+        int ceilY = height - y - 1;
+        int rowOffset = ceilY * width;
+        
+        for(int x = 0; x < width; x++){
             if(ceilY < colBuffer[x].drawStart){
-                int tx = (floorX >> 10) & (ceilTex->width - 1);
-                int ty = (floorY >> 10) & (ceilTex->height - 1);
+                int tx = (floorX >> cccordShift) & (ceilTex->mask);
+                int ty = (floorY >> cccordShift) & (ceilTex->mask);
 
-                DrawPixel(x, ceilY, ceilTex->pixels[ty * ceilTex->width + tx]);
+                dst[rowOffset + x] = ceilPx[(ty << ceilTex->shift) + tx];
             }
-
             floorX += stepX;
             floorY += stepY;
         }
     }
 }
+

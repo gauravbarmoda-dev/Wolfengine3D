@@ -11,6 +11,9 @@ struct Texture{
     int height, width;
     uint16_t* pixels;
 
+    int shift;
+    int mask;
+
     ~Texture() {if(pixels) delete[] pixels;}
 };
 

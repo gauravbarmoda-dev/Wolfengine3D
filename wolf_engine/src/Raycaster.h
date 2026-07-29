@@ -10,14 +10,11 @@ class Camera;
 class Map;
 
 struct ColumnGeometry{
-    int   drawStart;
-    int   drawEnd;
-    
     float distance;
     float wallX;
-
+    uint16_t   drawStart;
+    uint16_t   drawEnd;
     unsigned char tileID;
-
     bool side;
 };
 

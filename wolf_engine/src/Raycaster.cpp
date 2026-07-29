@@ -130,6 +130,8 @@ void Raycaster::CalculateRowGeometry(Camera* camera){
     float rayDirY0 = camera->dir.y - camera->plane.y;
     float rayDirX1 = camera->dir.x + camera->plane.x;
     float rayDirY1 = camera->dir.y + camera->plane.y;
+    
+    float invWidth = 1.0f / scrWidth;
 
     #pragma omp parallel for schedule(static)
     for(int y = horizon + 1; y < scrHeight; y++){
@@ -138,8 +140,8 @@ void Raycaster::CalculateRowGeometry(Camera* camera){
         float rowDistance = recipLUT[p];   //distance from cam to floor
     
         // how far we have to move in map for every 1 pixel on the screen
-        float floorStepX = rowDistance * (rayDirX1 - rayDirX0) / scrWidth;
-        float floorStepY = rowDistance * (rayDirY1 - rayDirY0) / scrWidth;
+        float floorStepX = rowDistance * (rayDirX1 - rayDirX0) * invWidth;
+        float floorStepY = rowDistance * (rayDirY1 - rayDirY0) * invWidth;
 
         // starting point
         float startFloorX = camera->pos.x + rowDistance * rayDirX0;

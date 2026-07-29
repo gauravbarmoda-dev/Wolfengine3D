@@ -3,8 +3,8 @@
 #include <SDL2/SDL_timer.h>
 #include <iostream>
 
-Engine::Engine() : window(nullptr), renderer(nullptr), texture(nullptr), scrWidth(0),
-                   isRunning(false), lastFrameTime(0), deltaTime(0.0f) {}
+Engine::Engine() : window(nullptr), renderer(nullptr), texture(nullptr), lastFrameTime(0),
+                   scrWidth(0), deltaTime(0.0f), isRunning(false) {}
 
 Engine::~Engine() {
     Quit();

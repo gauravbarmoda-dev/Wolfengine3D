@@ -87,6 +87,9 @@ Texture* AssetMgr::LoadTexture(unsigned char tileID, const char* filepath){
     tex->width  = converted->h;
     tex->height = converted->w;
 
+    tex->shift = __builtin_ctz(tex->width);
+    tex->mask = tex->width - 1;
+
     int numBytes = tex->width * tex->height * sizeof(uint16_t);
     tex->pixels = new uint16_t[tex->width * tex->height];
     std::memcpy(tex->pixels, converted->pixels, numBytes);
