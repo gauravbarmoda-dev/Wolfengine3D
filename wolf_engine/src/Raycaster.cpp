@@ -1,6 +1,8 @@
 #include "Raycaster.h"
 #include "Camera.h"
+#include "Sprite.h"
 #include "Map.h"
+#include <complex>
 #include <cstdint>
 
 Raycaster::Raycaster(int w, int h) : scrWidth(w), scrHeight(h) {
@@ -149,9 +151,36 @@ void Raycaster::CalculateRowGeometry(Camera* camera){
 
         int index = y - (horizon + 1);
         
+        // fixed point math
         rowBuffer[index].startFloorX = (int32_t)(startFloorX * 65536.0f);
         rowBuffer[index].startFloorY = (int32_t)(startFloorY * 65536.0f);
         rowBuffer[index].stepX = (int32_t)(floorStepX * 65536.0f);
         rowBuffer[index].stepY = (int32_t)(floorStepY * 65536.0f);
     }
+}
+
+void Raycaster::ProjectSprite(float spriteX, float spriteY, Camera* cam, SpriteProjection* proj){
+    float relativeX = spriteX - cam->pos.x;
+    float relativeY = spriteY - cam->pos.y;
+    
+    // inverse determinant 
+    float invDet = 1.0f / (cam->plane.x * cam->dir.y - cam->plane.y * cam->dir.x);
+
+    // inverse camear transform matrix
+    float transformX = invDet * (cam->dir.y * relativeX - cam->dir.x * relativeY);
+    float transformY = invDet * (cam->plane.x * relativeY - cam->plane.y * relativeX);
+
+    proj->distance = transformY;
+
+    if(transformY <= 0.1f) return;
+
+    int spriteScreenX = int((scrWidth / 2) * (1 + transformX / transformY));
+
+    int spriteHeight = abs((int)(scrHeight / transformY));
+    int spriteWidth = spriteHeight;
+
+    proj->drawStartX = spriteScreenX - (spriteWidth / 2);
+    proj->drawEndX   = spriteScreenX + (spriteWidth / 2);
+    proj->drawStartY = (scrHeight / 2) - (spriteHeight / 2);
+    proj->drawEndY   = (scrHeight / 2) + (spriteHeight / 2);
 }

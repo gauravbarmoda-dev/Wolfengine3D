@@ -1,11 +1,14 @@
-#include "AssetMgr.h"
-#include "Font.h"
-#include "Palette.h"
-#include "Raycaster.h"
 #include "Rasterizer.h"
-#include <cmath>
-#include <cstdint>
+#include "Raycaster.h"
+#include "AssetMgr.h"
+#include "Palette.h"
+#include "Sprite.h"
+#include "Camera.h"
+#include "Font.h"
+#include <algorithm>
 #include <iostream>
+#include <cstdint>
+#include <cmath>
 
 Rasterizer::Rasterizer() : width(0), height(0), pixels(nullptr) {}
 
@@ -210,3 +213,54 @@ void Rasterizer::DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* row
     }
 }
 
+void Rasterizer::DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster){
+    SpriteProjection proj;
+    raycaster->ProjectSprite(sprite.x, sprite.y, cam, &proj);
+
+    if(proj.distance <= 0.1f) return;
+
+    int drawStartX = std::max(0, proj.drawStartX);
+    int drawEndX   = std::min(width, proj.drawEndX);
+
+    int spriteWidth = proj.drawEndX - proj.drawStartX;
+
+    SpriteFrame* frame = &sprite.sheet->frames[sprite.currentFrame];
+
+    for(int x = drawStartX; x < drawEndX; x++){
+        int texX = (x - proj.drawStartX) * frame->width / spriteWidth;
+
+        SpriteColumn* col = &frame->columns[texX];
+
+        DrawVertSprite(x, proj.drawStartY, proj.drawEndY, col, proj.distance, raycaster->GetColBuffer(), frame->height);
+    }
+}
+
+void Rasterizer::DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, float spriteDistance, ColumnGeometry* colBuffer, int frameHeight){
+    if(spriteDistance >= colBuffer[x].distance) return;
+    if(column->numRuns == 0) return;
+
+    int spriteHeight = endY - startY;
+    int32_t step = (frameHeight * 65536) / spriteHeight;
+
+    for(int i = 0; i < column->numRuns; i++){
+        SpriteRun& run = column->runs[i];
+    
+        int screenY = startY + (run.start * spriteHeight) / frameHeight;
+        int runHeight = (run.size * spriteHeight) / frameHeight;
+        int screenEndY = screenY + runHeight;
+
+        int drawStartY = std::max(0, screenY);
+        int drawEndY   = std::min(height, screenEndY);
+
+        int32_t texPos = 0;
+        if(screenY < 0){
+            texPos += step * (-screenY);
+        }
+
+        for(int y = drawStartY; y < drawEndY; y++){
+            uint16_t color = run.runData[texPos >> 16];
+            pixels[y * width + x] = color;
+            texPos += step;
+        }
+    }
+}

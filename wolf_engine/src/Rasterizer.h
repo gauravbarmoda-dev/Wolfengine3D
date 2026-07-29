@@ -1,16 +1,20 @@
 #ifndef RASTERIZER_H
 #define RASTERIZER_H
 
-#include "AssetMgr.h"
-#include "Camera.h"
-#include "Raycaster.h"
 #include <string>
 #include <cstdint>
 #include <algorithm>
 
 struct ColumnGeometry;
+struct RowGeometry;
+struct Texture;
+struct SpriteColumn;
+struct Sprite;
+class Raycaster;
 class AssetMgr;
 class Palette;
+class Camera;
+
 
 class Rasterizer{
 private:
@@ -61,6 +65,10 @@ public:
     void DrawHorizon(ColumnGeometry* colBuffer, uint16_t ceil, uint16_t floor);
 
     void DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* rowBuffer, Texture* floor, Texture* ceil);
+
+    void DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, float spriteDistance, ColumnGeometry* colBuffer, int frameHeight);
+
+    void DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster);
 
     int GetWidth() const {return width;}
     int GetHeight() const {return height;}

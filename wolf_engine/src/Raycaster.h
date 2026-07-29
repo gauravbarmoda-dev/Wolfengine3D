@@ -1,8 +1,10 @@
 #ifndef RAYCASTER_H
 #define RAYCASTER_H
 
+#include "Sprite.h"
 #include <cstdint>
 
+struct SpriteProjection;
 class Rasterizer;
 class AssetMgr;
 class Palette;
@@ -44,6 +46,8 @@ public:
 
     ColumnGeometry* GetColBuffer() {return colBuffer;}
     RowGeometry* GetRowBuffer() {return rowBuffer;}
+
+    void ProjectSprite(float spriteX, float spriteY, Camera* cam, SpriteProjection* proj);
 };
 
 #endif

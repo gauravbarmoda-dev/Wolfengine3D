@@ -1,10 +1,13 @@
 #include "AssetMgr.h"
 #include <SDL2/SDL_error.h>
+#include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_surface.h>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <cstring>
 #include "Map.h"
+#include "Sprite.h"
 
 AssetMgr::AssetMgr() {
     for(int i = 0; i < MAX_TILE_SIZE; i++){
@@ -97,4 +100,97 @@ Texture* AssetMgr::LoadTexture(unsigned char tileID, const char* filepath){
     SDL_FreeSurface(converted);
     textures[tileID] = tex;
     return tex;
+}
+
+SpriteSheet* AssetMgr::LoadSpriteSheet(const char* filepath, int frameWidth, int frameHeight, uint16_t bgColor){
+    std::string pathKey(filepath);
+    auto it = loadedSprites.find(pathKey);
+    if(it != loadedSprites.end()) return it->second;
+
+    SDL_Surface* surface = SDL_LoadBMP(filepath);
+    if(!surface){
+        std::cerr << "Failed to load sprite " << filepath << ": " << SDL_GetError() << "\n";
+        return nullptr;
+    }
+
+    SDL_Surface* converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGB565, 0);
+    SDL_FreeSurface(surface);
+    if(!converted) return nullptr;
+
+    int sheetWidth = converted->w;
+    int sheetHeight = converted->h;
+
+    uint16_t* pixels = (uint16_t*)converted->pixels;
+
+    SpriteSheet* sheet = new SpriteSheet();
+    int cols = sheetWidth / frameWidth;
+    int rows = sheetHeight / frameHeight;
+
+    sheet->numFrames = cols * rows;
+    sheet->frames = new SpriteFrame[sheet->numFrames];
+    
+    sheet->solidPixelData = new uint16_t[sheetWidth * sheetHeight];
+    uint16_t* writePtr = sheet->solidPixelData;
+
+    // frame extract
+    int frameIdx = 0;
+    for(int y = 0; y < rows; y++){
+        for(int x = 0; x < cols; x++){
+            SpriteFrame& frame = sheet->frames[frameIdx++];
+            frame.width  = frameWidth;
+            frame.height = frameHeight;
+            frame.columns = new SpriteColumn[frameWidth];
+
+            int startX = x * frameWidth;
+            int startY = y * frameHeight;
+            
+            for(int i = 0; i < frameWidth; i++){
+                int imgX = startX + i;
+                
+                std::vector<SpriteRun> tempRuns;
+                int j = 0;
+        
+                while(j < frameHeight){
+                    while(j < frameHeight){
+                        uint16_t color = pixels[(startY + j) * sheetWidth + imgX];
+                        if(color != bgColor) break;
+                        j++;
+                    }
+                    
+                    if(j >= frameHeight) break;
+
+                    SpriteRun run;
+                    run.start = j;
+                    run.size = 0;
+                    run.runData = writePtr;
+
+                    while(j < frameHeight){
+                        uint16_t color = pixels[(startY + j) * sheetWidth + imgX];
+                        if(color == bgColor) break;
+                        
+                        *writePtr = color;
+                        writePtr++;
+                        run.size++;
+                        j++;
+                    }
+                    tempRuns.push_back(run);
+                }
+
+                frame.columns[i].numRuns = tempRuns.size();
+                if(tempRuns.empty()){
+                    frame.columns[i].runs = nullptr;    
+                }
+                else{
+                    frame.columns[i].runs = new SpriteRun[tempRuns.size()];
+                    for(size_t k = 0; k < tempRuns.size(); k++){
+                        frame.columns[i].runs[k] = tempRuns[k]; 
+                    }
+                }
+            }
+        }
+    }
+
+    SDL_FreeSurface(converted);
+    loadedSprites[pathKey] = sheet;
+    return sheet;
 }
