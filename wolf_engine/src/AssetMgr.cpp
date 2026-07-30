@@ -27,6 +27,11 @@ AssetMgr::~AssetMgr() {
             textures[i] = nullptr;
         }
     }
+
+    for(auto& pair : loadedSprites){
+        delete pair.second; 
+    }
+    loadedSprites.clear();
 }
 
 Map* AssetMgr::LoadMap(const char* filePath, int requestedSize){                       

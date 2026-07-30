@@ -4,6 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <algorithm>
+#include <vector>
 
 struct ColumnGeometry;
 struct RowGeometry;
@@ -23,11 +24,15 @@ private:
 
     uint16_t* pixels;
 
+    std::vector<Sprite*> renderQueue;
+
 public:
     Rasterizer();
     ~Rasterizer();
 
     bool Initialize(int scrWidth, int scrHeight);
+
+    void QueueSprite(Sprite* sprite) {renderQueue.push_back(sprite);}
 
     void CleanUp();
 
@@ -66,9 +71,11 @@ public:
 
     void DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* rowBuffer, Texture* floor, Texture* ceil);
 
-    void DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, float spriteDistance, ColumnGeometry* colBuffer, int frameHeight);
+    void DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, int frameHeight);
 
     void DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster);
+
+    void DrawSprites(Camera* cam, Raycaster* raycaster);
 
     int GetWidth() const {return width;}
     int GetHeight() const {return height;}

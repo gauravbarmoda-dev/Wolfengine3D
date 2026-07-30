@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-// Run-Length Encoding(RLW) - in testing
+// Run-Length Encoding(RLE) - in testing
 
 struct SpriteRun{
     int16_t start;    // where run starts
@@ -19,6 +19,17 @@ struct SpriteColumn{
 struct SpriteFrame{
     int width, height;
     SpriteColumn* columns;
+
+    ~SpriteFrame(){
+        if(columns){
+            for(int i = 0; i < width; i++){
+                if(columns[i].runs){
+                    delete[] columns[i].runs;
+                }
+            }
+            delete[] columns;
+        }
+    }
 };
 
 struct SpriteSheet{
@@ -28,6 +39,7 @@ struct SpriteSheet{
 
     ~SpriteSheet(){
         if(solidPixelData) delete[] solidPixelData;
+        if(frames) delete[] frames;   
     }
 };
 

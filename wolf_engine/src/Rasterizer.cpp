@@ -214,8 +214,10 @@ void Rasterizer::DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* row
 }
 
 void Rasterizer::DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster){
+    SpriteFrame* frame = &sprite.sheet->frames[sprite.currentFrame];
+
     SpriteProjection proj;
-    raycaster->ProjectSprite(sprite.x, sprite.y, cam, &proj);
+    raycaster->ProjectSprite(sprite.x, sprite.y, cam, &proj, frame->width, frame->height);
 
     if(proj.distance <= 0.1f) return;
 
@@ -223,30 +225,38 @@ void Rasterizer::DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster){
     int drawEndX   = std::min(width, proj.drawEndX);
 
     int spriteWidth = proj.drawEndX - proj.drawStartX;
+    if(spriteWidth <= 0) return;
 
-    SpriteFrame* frame = &sprite.sheet->frames[sprite.currentFrame];
+    int32_t texX_step = (frame->width << 16) / spriteWidth;
+    int32_t texX_FP   = (drawStartX - proj.drawStartX) * texX_step;
 
     for(int x = drawStartX; x < drawEndX; x++){
-        int texX = (x - proj.drawStartX) * frame->width / spriteWidth;
+        if(proj.distance >= raycaster->GetColBuffer()[x].distance) continue;       
+
+        int texX = texX_FP >> 16;
+        texX_FP += texX_step;
 
         SpriteColumn* col = &frame->columns[texX];
+    
+        if(col->numRuns == 0) continue;
 
-        DrawVertSprite(x, proj.drawStartY, proj.drawEndY, col, proj.distance, raycaster->GetColBuffer(), frame->height);
+        DrawVertSprite(x, proj.drawStartY, proj.drawEndY, col, frame->height);
     }
 }
 
-void Rasterizer::DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, float spriteDistance, ColumnGeometry* colBuffer, int frameHeight){
-    if(spriteDistance >= colBuffer[x].distance) return;
-    if(column->numRuns == 0) return;
-
+void Rasterizer::DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, int frameHeight){
     int spriteHeight = endY - startY;
-    int32_t step = (frameHeight * 65536) / spriteHeight;
+    if(spriteHeight <= 0) return;
+
+    int32_t step = (frameHeight * 65536) / spriteHeight;        // for runData index
+    
+    int32_t invStep = (spriteHeight << 16) / frameHeight;       //for screenY and runHeight
 
     for(int i = 0; i < column->numRuns; i++){
         SpriteRun& run = column->runs[i];
     
-        int screenY = startY + (run.start * spriteHeight) / frameHeight;
-        int runHeight = (run.size * spriteHeight) / frameHeight;
+        int screenY = startY + ((run.start * invStep) >> 16);
+        int runHeight = ((run.size * invStep) >> 16);
         int screenEndY = screenY + runHeight;
 
         int drawStartY = std::max(0, screenY);
@@ -257,10 +267,59 @@ void Rasterizer::DrawVertSprite(int x, int startY, int endY, SpriteColumn* colum
             texPos += step * (-screenY);
         }
 
+        // pointer aliasing SMID
+        uint16_t* __restrict__ dst = pixels;
+        const uint16_t* __restrict__ src = run.runData;
+
+        int pixIndex = drawStartY * width + x;
         for(int y = drawStartY; y < drawEndY; y++){
-            uint16_t color = run.runData[texPos >> 16];
-            pixels[y * width + x] = color;
+            dst[pixIndex] = src[texPos >> 16];
+            pixIndex += width;
             texPos += step;
         }
     }
+}
+
+void Rasterizer::DrawSprites(Camera* cam, Raycaster* raycaster){
+    const int NUM_BUCKETS = 256;
+    const float MAX_DISTANCE = 64.0f;
+    const float MAX_DISTANCE_SQR = MAX_DISTANCE * MAX_DISTANCE;
+
+    static std::vector<Sprite*> buckets[NUM_BUCKETS];
+
+    for(int i = 0; i < NUM_BUCKETS; i++){
+        buckets[i].clear();
+    }
+    
+    float halfFov = std::atan(cam->fov);                //converts fov length into radians 
+    float padding = 0.4f;                               //little offset so sprites don't disappear immediately
+    float threshold = cosf(halfFov + padding);          //cosine curve
+    float thresholdSqr = threshold * threshold;
+
+    for(Sprite* sprite : renderQueue){
+        Vector2 spritePos(sprite->x, sprite->y);
+        Vector2 spriteVec = spritePos - cam->pos;
+
+        float dotUnnormalized = spriteVec.Dot(cam->dir);    // is sprite in direction of our camera dir
+        if(dotUnnormalized <= 0.0f) continue;
+
+        float distSqr = spriteVec.Dot(spriteVec);           //just pythagorus
+
+        if(((dotUnnormalized * dotUnnormalized) / distSqr) < thresholdSqr) continue;
+
+        int bucketIdx = (int)((distSqr / MAX_DISTANCE_SQR) * (NUM_BUCKETS - 1));
+
+        if(bucketIdx < 0) bucketIdx = 0;
+        if(bucketIdx >= NUM_BUCKETS) bucketIdx = NUM_BUCKETS - 1;
+
+        buckets[bucketIdx].push_back(sprite);
+    }
+
+    for(int i = NUM_BUCKETS - 1; i >= 0; i--){
+        for(Sprite* sprite : buckets[i]){
+            DrawSprite(*sprite, cam, raycaster);
+        }
+    }
+
+    renderQueue.clear();
 }
