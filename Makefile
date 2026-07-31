@@ -3,16 +3,17 @@
 PLATFORM ?= pc
 TARGET = game
 
-SRC = wolf_engine/src/Camera.cpp \
-      wolf_engine/src/Engine.cpp \
-      wolf_engine/src/Input.cpp \
-      wolf_engine/src/Map.cpp \
-      wolf_engine/src/Rasterizer.cpp \
-      wolf_engine/src/Raycaster.cpp \
-      wolf_engine/src/Palette.cpp \
-      wolf_engine/src/AssetMgr.cpp \
-      src/main.cpp \
-      src/Player.cpp
+SRC = engine/src/Camera.cpp \
+      engine/src/Engine.cpp \
+      engine/src/Input.cpp \
+      engine/src/Map.cpp \
+      engine/src/Rasterizer.cpp \
+      engine/src/Raycaster.cpp \
+      engine/src/Palette.cpp \
+      engine/src/AssetMgr.cpp \
+      demo/main.cpp \
+	  demo/player.cpp \
+	  demo/enemy.cpp \
 
 ifeq ($(PLATFORM), rg35xx)
     # RG35XX Plus Setup
