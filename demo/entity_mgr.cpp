@@ -1,0 +1,31 @@
+#include "entity_mgr.h"
+#include "enemy.h"
+
+Entity::~Entity() {
+    Clear();
+}
+
+void Entity::Update(Camera* cam, float dt){
+    for(Enemy* e : enemies){
+        e->Update(cam, dt);
+    }
+}
+
+void Entity::QueueSprites(Rasterizer* rasterizer){
+    for(Enemy* e : enemies){
+        rasterizer->QueueSprite(e->GetSprite());
+    }
+}
+
+void Entity::AddEnemy(Enemy* enemy){
+    if(enemy){
+        enemies.push_back(enemy);
+    }
+}
+
+void Entity::Clear(){
+    for(Enemy* e : enemies){
+        delete e;
+    }
+    enemies.clear();
+}
