@@ -29,6 +29,7 @@ bool Engine::Initialize(int width, int height, const char* title){
     
     if(!window){
         std::cerr << "Failed to Create SDL window: " << SDL_GetError() << "\n";
+        Quit();
         return false;
     }
 
@@ -36,6 +37,7 @@ bool Engine::Initialize(int width, int height, const char* title){
     
     if(!renderer){
         std::cerr << "Failed to create SDL renderer: " << SDL_GetError() << "\n";
+        Quit();
         return false;
     }
 
@@ -48,6 +50,7 @@ bool Engine::Initialize(int width, int height, const char* title){
 
     if(!texture) {
         std::cerr << "Failed to create Texture: " << SDL_GetError() << "\n";
+        Quit();
         return false;
     }
 

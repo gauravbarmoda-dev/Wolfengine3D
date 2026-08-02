@@ -231,10 +231,10 @@ void Rasterizer::DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster){
     int32_t texX_FP   = (drawStartX - proj.drawStartX) * texX_step;
 
     for(int x = drawStartX; x < drawEndX; x++){
-        if(proj.distance >= raycaster->GetColBuffer()[x].distance) continue;       
-
         int texX = texX_FP >> 16;
         texX_FP += texX_step;
+
+        if(proj.distance >= raycaster->GetColBuffer()[x].distance) continue;       
 
         SpriteColumn* col = &frame->columns[texX];
     

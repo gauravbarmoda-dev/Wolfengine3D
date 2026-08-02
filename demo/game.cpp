@@ -4,12 +4,13 @@
 #include "player.h"
 #include "world.h"
 
-Game::Game() : raycaster(nullptr), player(nullptr), world(nullptr), level(0) {}
+Game::Game() : raycaster(nullptr), world(nullptr), player(nullptr), level(0) {}
 
 Game::~Game(){
     if(raycaster) delete raycaster; 
     if(player)    delete player;
     if(world)     delete world;
+    if(entity)    delete entity;
 }
 
 bool Game::Initialize(int width, int height, const char* title){
@@ -17,7 +18,7 @@ bool Game::Initialize(int width, int height, const char* title){
     scrWidth  = width;
 
     if(!engine.Initialize(scrWidth, scrHeight, title)) return false;
-    engine.TargetFPS(100);
+    engine.TargetFPS(1000);
 
     rasterizer.Initialize(width, height);
     
@@ -31,9 +32,8 @@ bool Game::Initialize(int width, int height, const char* title){
     world->LoadLevel(level);
 
     entity = new Entity();
-
-    Enemy* alomora = new Enemy(&assets, EnemyType::GROUDON, 1.5f, 1.5f);
-    entity->AddEnemy(alomora);
+    Enemy* blastoice = new Enemy(&assets, EnemyType::BLASTOICE, 3.5f, 3.5f);
+    entity->AddEnemy(blastoice);
 
     return true;
 }
@@ -51,7 +51,7 @@ void Game::Update(){
     
     player->Update(&camera, engine, world->GetMap(), engine.GetDeltaTime());
 
-    entity->Update(&camera, engine.GetDeltaTime());
+    entity->Update(&camera, world->GetMap(), engine.GetDeltaTime());
 }
 
 void Game::Render(){

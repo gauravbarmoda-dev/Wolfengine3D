@@ -17,7 +17,10 @@ enum class EnemyState{
 };
 
 enum class EnemyType{
-    GROUDON
+    ALOMORA,
+    BULBASAUR,
+    FURRET,
+    BLASTOICE
 };
 
 class Enemy{
@@ -25,22 +28,52 @@ private:
     Sprite sprite;
     EnemyState currentState;
     std::vector<SpriteSheet*> animations;
+
+    std::vector<Vector2> path;
+    int currentPathIndex = 0;
+
+    float animSpd    = 0.15f;
     float animTimer  = 0.0f;
     int animFrame    = 0;
+    float actionTime = 0.0f;
+    float faceAngle  = 0.0f;
+    int curDir       = 0;
+
+    float moveSpd = 1.0f;
+    float hitbox = 0.3f;
+    float stopRangeSqr = 4.0f;
+    float aggroRangeSqr = 36.0f;
+    float hysteresis = 1.5f;
+
+    float lastKnowX = 0.0f;
+    float lastKnowY = 0.0f;
+    bool hasLastKnown = false;
+    float rotations = 0.0f;
+    int roamCount = 0;
     
 public:
     Enemy(AssetMgr* assets, EnemyType type, float startX, float startY);
     ~Enemy() = default;
 
     void Initialize(std::vector<SpriteSheet*> sheets, float startX, float startY);
+    void Update(Camera* cam, Map* map, float dt);
 
-    void Update(Camera* cam, float dt);
-
-    Sprite* GetSprite(){return &sprite;}
+    Sprite* GetSprite(){ return &sprite; }
 
 private:
     void Animate(float dt);
     void ChangeState(EnemyState newState);
+
+    void UpdateIdle(float distanceSqr, bool canSeePlayer);
+    void UpdateWalk(float distanceSqr, bool canSeePlayer, float dt, Map* map);
+    void UpdateShoot(float distanceSqr, bool canSeePlayer, float dt);
+    void UpdateRotate(float dt, bool canSeePlayer, Map* map);
+
+    bool CheckFOV(float radToPlayer);
+    bool CalcLineOfSight(float targetX, float targetY, Map* map);
+    void CalculateFacingAngle(float radToPlayer);
+
+    bool FindPath(int startX, int startY, int targetX, int targetY, Map* map);
 };
 
 #endif

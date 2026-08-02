@@ -1,18 +1,58 @@
 #include "enemy.h"
+#include <cmath>
+#include <exception>
+#include <filesystem>
+#include <utility>
+#include <iostream>
+#include <queue>
+#include <cstdlib>
 
 Enemy::Enemy(AssetMgr* assets, EnemyType type, float startX, float startY){
     sprite.x = startX;
     sprite.y = startY;
     sprite.currentFrame = 0;
     currentState = EnemyState::IDLE;
+    faceAngle = 0.0f;
 
-    if(type == EnemyType::GROUDON){
+    if(type == EnemyType::ALOMORA){
+        animSpd = 0.2f;
+        moveSpd = 1.2f;
         animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Idle-Anim.bmp", 48, 80, 0xF81F));
         animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Walk-Anim.bmp", 48, 80, 0xF81F));
         animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Rotate-Anim.bmp", 48, 80, 0xF81F));
         animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Shoot-Anim.bmp", 56, 80, 0xF81F));
         animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Charge-Anim.bmp", 48, 80, 0xF81F));
         animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Hop-Anim.bmp", 48, 120, 0xF81F));
+        animations.push_back(animations[0]);
+    }    
+    else if(type == EnemyType::BULBASAUR){
+        animSpd = 0.1f;
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Idle-Anim.bmp", 32, 40, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Walk-Anim.bmp", 40, 40, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Rotate-Anim.bmp", 24, 32, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Shoot-Anim.bmp", 56, 64, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Charge-Anim.bmp", 48, 48, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Hop-Anim.bmp", 40, 104, 0xF81F));
+        animations.push_back(animations[0]);
+    }
+    else if(type == EnemyType::BLASTOICE){
+        animSpd = 0.3f;
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Idle-Anim.bmp", 40, 40, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Walk-Anim.bmp", 32, 40, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Rotate-Anim.bmp", 32, 40, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Shoot-Anim.bmp", 48, 56, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Charge-Anim.bmp", 40, 40, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Hop-Anim.bmp", 32, 88, 0xF81F));
+        animations.push_back(animations[0]);
+    }
+    else if(type == EnemyType::FURRET){
+        animSpd = 0.2f;
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Idle-Anim.bmp", 40, 40, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Walk-Anim.bmp", 56, 64, 0xF81F));
+        animations.push_back(animations[0]);
+        animations.push_back(animations[0]);
+        animations.push_back(animations[0]);
+        animations.push_back(animations[0]);
         animations.push_back(animations[0]);
     }
 
@@ -31,28 +71,218 @@ void Enemy::Initialize(std::vector<SpriteSheet*> sheets, float startX, float sta
     }
 }
 
-void Enemy::Update(Camera* cam, float dt){
-    (void)cam;
-    // AI logic
+void Enemy::Update(Camera* cam, Map* map, float dt){
+    if(currentState == EnemyState::DEAD){
+        Animate(dt);
+        return;
+    }
 
+    float diffX = cam->pos.x - sprite.x;
+    float diffY = cam->pos.y - sprite.y;
+    float distanceSqr = diffX * diffX + diffY * diffY;
+
+    float radToPlayer = std::atan2(diffY, diffX);
+    if(radToPlayer < 0.0f) radToPlayer += 2.0f * PI;
+
+    bool canSeePlayer = false;
+    if(distanceSqr <= aggroRangeSqr){
+        if(CheckFOV(radToPlayer) && CalcLineOfSight(cam->pos.x, cam->pos.y, map)){
+            canSeePlayer = true;
+        }
+    }
+
+    if(canSeePlayer){
+        lastKnowX = cam->pos.x;
+        lastKnowY = cam->pos.y;
+        hasLastKnown = true;
+        roamCount = 0;
+        path.clear();
+        faceAngle = (radToPlayer / (2.0f * PI)) * 4096.0f;
+    }
+    else if(currentState == EnemyState::WALK && hasLastKnown){
+        if(path.empty()){
+            bool found = FindPath((int)sprite.x, (int)sprite.y, (int)lastKnowX, (int)lastKnowY, map);
+            if(!found){
+                lastKnowX = sprite.x;
+                lastKnowY = sprite.y;
+            }
+        }
+        
+        if(!path.empty() && currentPathIndex < (int)path.size()){
+            float radToTarget = std::atan2(path[currentPathIndex].y - sprite.y, path[currentPathIndex].x - sprite.x);
+            if(radToTarget < 0.0f) radToTarget += 2.0f * PI;
+            faceAngle = (radToTarget / (2.0f * PI)) * 4096.0f;
+        }
+    }
+
+    switch(currentState){
+        case EnemyState::IDLE:
+            UpdateIdle(distanceSqr, canSeePlayer);
+            break;
+        case EnemyState::WALK:
+            UpdateWalk(distanceSqr, canSeePlayer, dt, map);
+            break;
+        case EnemyState::SHOOT:
+            UpdateShoot(distanceSqr, canSeePlayer, dt);
+            break;
+        case EnemyState::ROTATE:
+            UpdateRotate(dt, canSeePlayer, map);
+            break;
+        default:
+            break;
+    }
+
+    std::cout << static_cast<int>(currentState) << "\n";
+
+    CalculateFacingAngle(radToPlayer);
     Animate(dt);
+}
+
+void Enemy::UpdateIdle(float distanceSqr, bool canSeePlayer){
+    if(canSeePlayer){
+        ChangeState(EnemyState::WALK);
+    }
+}
+
+void Enemy::UpdateWalk(float distanceSqr, bool canSeePlayer, float dt, Map* map){
+    float targetX, targetY;
+    if(canSeePlayer){
+        if(distanceSqr < (stopRangeSqr - hysteresis)){
+            ChangeState(EnemyState::SHOOT);
+            return;
+        }
+        targetX = lastKnowX;
+        targetY = lastKnowY;
+    }
+    else if(hasLastKnown){
+        if(!path.empty() && currentPathIndex < (int)path.size()){
+            targetX = path[currentPathIndex].x;
+            targetY = path[currentPathIndex].y;
+            
+            float diffX = targetX - sprite.x;
+            float diffY = targetY - sprite.y;
+            
+            if(diffX * diffX + diffY * diffY < 0.02f){ 
+                currentPathIndex++;
+                if(currentPathIndex >= (int)path.size()){
+                    path.clear();
+                    ChangeState(EnemyState::ROTATE);
+                    return;
+                }
+                targetX = path[currentPathIndex].x;
+                targetY = path[currentPathIndex].y;
+            }
+        }
+        else{
+            ChangeState(EnemyState::ROTATE);
+            return;
+        }
+    }
+    else{
+        ChangeState(EnemyState::IDLE);
+        return;
+    }
+   
+    float diffX = targetX - sprite.x;
+    float diffY = targetY - sprite.y;
+    float realDistance = std::sqrt(diffX * diffX + diffY * diffY);
+
+    if(realDistance > 0.001f){
+        float moveX = (diffX / realDistance) * moveSpd * dt;
+        float moveY = (diffY / realDistance) * moveSpd * dt;
+
+        float newX = sprite.x + moveX;
+        float newY = sprite.y + moveY;
+
+        float checkX = (newX > sprite.x) ? hitbox : -hitbox;
+        float checkY = (newY > sprite.y) ? hitbox : -hitbox;
+
+        if(map->GetWorldTile(newX + checkX, sprite.y - hitbox) == 0 &&
+            map->GetWorldTile(newX + checkX, sprite.y + hitbox) == 0){
+            sprite.x = newX; 
+        }
+
+        if(map->GetWorldTile(sprite.x - hitbox, newY + checkY) == 0 &&
+            map->GetWorldTile(sprite.x + hitbox, newY + checkY) == 0){
+            sprite.y = newY;
+        }
+    }    
+}
+
+void Enemy::UpdateShoot(float distanceSqr, bool canSeePlayer, float dt){
+    if(!canSeePlayer || distanceSqr > (stopRangeSqr + hysteresis)){
+        ChangeState(EnemyState::WALK);
+    }
+}
+
+void Enemy::UpdateRotate(float dt, bool canSeePlayer, Map* map){
+    if(canSeePlayer){
+        ChangeState(EnemyState::WALK);
+        return;
+    }
+
+    float turnSpd = 3000.0f * dt;
+    faceAngle += turnSpd;
+    rotations += turnSpd;
+
+    if(faceAngle >= 4096.0f) faceAngle -= 4096.0f;
+
+    if(rotations >= 4096.0f){
+        if(roamCount < 3){
+            bool foundTile = false;
+            for(int i = 0; i < 10; i++){
+                int rx = (int)sprite.x + (std::rand() % 13 - 6);
+                int ry = (int)sprite.y + (std::rand() % 13 - 6);
+                if(rx >= 1 && rx < map->GetWidth() - 1 && ry >= 1 && ry < map->GetHeight() - 1){
+                    if(map->GetTile(rx, ry) == 0){
+                        lastKnowX = rx + 0.5f;
+                        lastKnowY = ry + 0.5f;
+                        foundTile = true;
+                        break;
+                    }
+                }
+            }
+            if(foundTile){
+                hasLastKnown = true;
+                roamCount++;
+                ChangeState(EnemyState::WALK);
+                return;
+            }
+        }
+        
+        roamCount = 0;
+        hasLastKnown = false;
+        ChangeState(EnemyState::IDLE);
+    }
+}
+
+void Enemy::CalculateFacingAngle(float radToPlayer){
+    int targetAngle = (int)((radToPlayer / (2.0f * PI)) * 4096.0f) % 4096;
+    int relativeAngle = (targetAngle - (int)faceAngle) % 4096;
+    if(relativeAngle < 0) relativeAngle += 4096;
+
+    int shiftedAngle = (relativeAngle + 256) % 4096;
+    curDir = shiftedAngle >> 9;
 }
 
 void Enemy::Animate(float dt){
     int state = static_cast<int>(currentState);
-
     if((size_t)state >= animations.size() || animations[state] == nullptr) return;
-
+    
+    int numDirections = 8;
+    int framesPerAnim = animations[state]->numFrames / numDirections;
+    if (framesPerAnim <= 0) return;
+    
     animTimer += dt;
-    const float TIME_PER_FRAME = 0.15f;
-
-    if(animTimer >= TIME_PER_FRAME){
-        animTimer -= TIME_PER_FRAME;
+    while(animTimer >= animSpd){
+        animTimer -= animSpd;
         animFrame++;
 
-        if(animFrame >= animations[state]->numFrames){
+        if(animFrame >= framesPerAnim){
             if(currentState == EnemyState::DEAD){
-                animFrame = animations[state]->numFrames - 1;
+                animFrame = framesPerAnim - 1;
+                animTimer = 0.0f;
+                break;
             }
             else{
                 animFrame = 0;
@@ -60,7 +290,7 @@ void Enemy::Animate(float dt){
         }
     }
 
-    sprite.currentFrame = animFrame;
+    sprite.currentFrame = animFrame + (curDir * framesPerAnim);
 }
 
 void Enemy::ChangeState(EnemyState newState){
@@ -70,9 +300,146 @@ void Enemy::ChangeState(EnemyState newState){
     animFrame  = 0;
     animTimer = 0.0f;
 
+    if(newState == EnemyState::ROTATE){
+        rotations = 0.0f;
+    }
+
     int state = static_cast<int>(currentState);
     if((size_t)state < animations.size() && animations[state] != nullptr){
         sprite.sheet = animations[state];
         sprite.currentFrame = 0;
     }
+}
+
+bool Enemy::CheckFOV(float radToPlayer){
+    int targetAngle = (int)((radToPlayer / (2.0f * PI)) * 4096.0f) % 4096;
+    int relativeAngle = (targetAngle - (int)faceAngle) % 4096;
+    if(relativeAngle < 0) relativeAngle += 4096;
+
+    return (relativeAngle <= 512 || relativeAngle >= 3584);
+}
+
+bool Enemy::CalcLineOfSight(float targetX, float targetY, Map* map){
+    float rayDirX = targetX - sprite.x;
+    float rayDirY = targetY - sprite.y;
+
+    float distance = std::sqrt(rayDirX * rayDirX + rayDirY * rayDirY);    
+    if(distance == 0.0f) return true;
+
+    rayDirX /= distance;
+    rayDirY /= distance;
+
+    int mapX = (int)sprite.x;
+    int mapY = (int)sprite.y;
+
+    float deltaDistX = (rayDirX == 0) ? 1e30f : std::abs(1.0f / rayDirX);
+    float deltaDistY = (rayDirY == 0) ? 1e30f : std::abs(1.0f / rayDirY);
+
+    float sideDistX, sideDistY;
+    int stepX, stepY;
+
+    if(rayDirX < 0){
+        stepX = -1;
+        sideDistX = (sprite.x - mapX) * deltaDistX;
+    }
+    else{
+        stepX = 1;
+        sideDistX = (mapX + 1.0f - sprite.x) * deltaDistX;
+    }
+
+    if(rayDirY < 0){
+        stepY = -1;
+        sideDistY = (sprite.y - mapY) * deltaDistY;
+    }
+    else{
+        stepY = 1;
+        sideDistY = (mapY + 1.0f - sprite.y) * deltaDistY;
+    }
+
+    float currentDist = 0.0f;
+    while(currentDist < distance){
+        if(sideDistX < sideDistY){
+            sideDistX += deltaDistX;
+            mapX += stepX;
+            currentDist = sideDistX - deltaDistX;
+        }
+        else {
+            sideDistY += deltaDistY;
+            mapY += stepY;
+            currentDist = sideDistY - deltaDistY;
+        }
+
+        if(currentDist >= distance) break;
+        if(map->GetTile(mapX, mapY) != 0) return false;
+    }
+    
+    return true;
+}
+
+bool Enemy::FindPath(int startX, int startY, int targetX, int targetY, Map* map){
+    path.clear();
+    currentPathIndex = 0;
+    
+    if(startX == targetX && startY == targetY) return true;
+    
+    int width = map->GetWidth();
+    int height = map->GetHeight();
+    
+    std::vector<int> cameFrom(width * height, -1);
+    std::queue<int> frontier;
+    
+    int startIdx = startY * width + startX;
+    int targetIdx = targetY * width + targetX;
+    
+    frontier.push(startIdx);
+    cameFrom[startIdx] = startIdx;
+    
+    int dx[] = {1, -1, 0, 0};
+    int dy[] = {0, 0, 1, -1};
+    
+    bool found = false;
+    while(!frontier.empty()){
+        int current = frontier.front();
+        frontier.pop();
+        
+        if(current == targetIdx){
+            found = true;
+            break;
+        }
+        
+        int cx = current % width;
+        int cy = current / width;
+        
+        for(int i = 0; i < 4; i++){
+            int nx = cx + dx[i];
+            int ny = cy + dy[i];
+            
+            if(nx >= 0 && nx < width && ny >= 0 && ny < height){
+                if(map->GetTile(nx, ny) == 0){
+                    int nIdx = ny * width + nx;
+                    if(cameFrom[nIdx] == -1){
+                        frontier.push(nIdx);
+                        cameFrom[nIdx] = current;
+                    }
+                }
+            }
+        }
+    }
+    
+    if(!found) return false;
+    
+    int curr = targetIdx;
+    std::vector<Vector2> tempPath;
+    while(curr != startIdx){
+        int cx = curr % width;
+        int cy = curr / width;
+        tempPath.push_back(Vector2(cx + 0.5f, cy + 0.5f));
+        curr = cameFrom[curr];
+    }
+    
+    for(int i = (int)tempPath.size() - 1; i >= 0; i--){
+        path.push_back(tempPath[i]);
+    }
+    
+    return true;
 }

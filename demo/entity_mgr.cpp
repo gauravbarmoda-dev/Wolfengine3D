@@ -5,9 +5,9 @@ Entity::~Entity() {
     Clear();
 }
 
-void Entity::Update(Camera* cam, float dt){
+void Entity::Update(Camera* cam, Map* map, float dt){
     for(Enemy* e : enemies){
-        e->Update(cam, dt);
+        e->Update(cam, map, dt);
     }
 }
 

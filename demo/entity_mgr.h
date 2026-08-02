@@ -16,7 +16,7 @@ public:
 
     void AddEnemy(Enemy* enemy);
 
-    void Update(Camera* cam, float dt);
+    void Update(Camera* cam, Map* map, float dt);
 
     void QueueSprites(Rasterizer* rasterer);
 

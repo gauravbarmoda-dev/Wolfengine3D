@@ -13,7 +13,7 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
     float rotStep = rotSpeed * dt;
 
     Vector2 newPos = curPos;
-    Vector2 movDir(fcos((int)angle), fsin((int)angle));
+    Vector2 movDir(fcos(angle), fsin(angle));
     Vector2 rightDir(-movDir.y, movDir.x);
     
     // Vertical
