@@ -57,4 +57,9 @@ struct SpriteProjection{
     float distance;
 };
 
+struct SpriteDrawInfo{
+    Sprite* sprite;
+    uint32_t disSqrBits;
+};
+
 #endif

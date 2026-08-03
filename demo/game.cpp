@@ -4,7 +4,7 @@
 #include "player.h"
 #include "world.h"
 
-Game::Game() : raycaster(nullptr), world(nullptr), player(nullptr), level(0) {}
+Game::Game() : raycaster(nullptr), entity(nullptr), world(nullptr), player(nullptr), level(0) {}
 
 Game::~Game(){
     if(raycaster) delete raycaster; 
@@ -24,7 +24,7 @@ bool Game::Initialize(int width, int height, const char* title){
     
     raycaster = new Raycaster(width, height);
 
-    player = new Player(Vector2(2.5f, 2.5f), 0.0f);
+    player = new Player(Vector2(2.5f, 2.5f), 0.0f, &assets);
     
     world = new World();
     world->Initialize(&assets);
@@ -34,6 +34,9 @@ bool Game::Initialize(int width, int height, const char* title){
     entity = new Entity();
     Enemy* blastoice = new Enemy(&assets, EnemyType::BLASTOICE, 3.5f, 3.5f);
     entity->AddEnemy(blastoice);
+
+    Enemy* charizard = new Enemy(&assets, EnemyType::CHARIZARD, 1.5f, 1.5f);
+    entity->AddEnemy(charizard);
 
     return true;
 }

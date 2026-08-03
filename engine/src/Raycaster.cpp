@@ -177,7 +177,7 @@ void Raycaster::ProjectSprite(float spriteX, float spriteY, Camera* cam, SpriteP
     int floorY = (scrHeight >> 1) + (baseHeight >> 1);
 
     float scale = frameHeight / 64.0f;
-    if(scale >= 0.6f) scale += 0.5f;
+    if(scale >= 0.4f) scale += 0.5f;
 
     int spriteHeight = (int)(baseHeight * scale);
     int spriteWidth = (spriteHeight * frameWidth) / frameHeight;

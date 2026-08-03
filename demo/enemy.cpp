@@ -4,8 +4,8 @@
 #include <filesystem>
 #include <utility>
 #include <iostream>
-#include <queue>
 #include <cstdlib>
+#include <algorithm>
 
 Enemy::Enemy(AssetMgr* assets, EnemyType type, float startX, float startY){
     sprite.x = startX;
@@ -17,44 +17,61 @@ Enemy::Enemy(AssetMgr* assets, EnemyType type, float startX, float startY){
     if(type == EnemyType::ALOMORA){
         animSpd = 0.2f;
         moveSpd = 1.2f;
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Idle-Anim.bmp", 48, 80, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Walk-Anim.bmp", 48, 80, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Rotate-Anim.bmp", 48, 80, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Shoot-Anim.bmp", 56, 80, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Charge-Anim.bmp", 48, 80, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Hop-Anim.bmp", 48, 120, 0xF81F));
+        maxHealth = 100;
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Idle-Anim.bmp", 44, 48, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Walk-Anim.bmp", 44, 78, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Rotate-Anim.bmp", 44, 48, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Shoot-Anim.bmp", 158, 78, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Charge-Anim.bmp", 38, 46, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/auromora/Hop-Anim.bmp", 44, 48, 0xF81F));
         animations.push_back(animations[0]);
     }    
     else if(type == EnemyType::BULBASAUR){
         animSpd = 0.1f;
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Idle-Anim.bmp", 32, 40, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Walk-Anim.bmp", 40, 40, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Rotate-Anim.bmp", 24, 32, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Shoot-Anim.bmp", 56, 64, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Charge-Anim.bmp", 48, 48, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Hop-Anim.bmp", 40, 104, 0xF81F));
+        maxHealth = 50;
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Idle-Anim.bmp", 24, 22, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Walk-Anim.bmp", 24, 22, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Rotate-Anim.bmp", 214, 22, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Shoot-Anim.bmp", 20, 22, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Charge-Anim.bmp", 24, 40, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/bulbasaur/Hop-Anim.bmp", 24, 22, 0xF81F));
         animations.push_back(animations[0]);
     }
     else if(type == EnemyType::BLASTOICE){
         animSpd = 0.3f;
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Idle-Anim.bmp", 40, 40, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Walk-Anim.bmp", 32, 40, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Rotate-Anim.bmp", 32, 40, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Shoot-Anim.bmp", 48, 56, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Charge-Anim.bmp", 40, 40, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Hop-Anim.bmp", 32, 88, 0xF81F));
+        maxHealth = 150;
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Idle-Anim.bmp", 30, 30, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Walk-Anim.bmp", 28, 30, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Rotate-Anim.bmp", 28, 30, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Shoot-Anim.bmp", 32, 34, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Charge-Anim.bmp", 30, 28, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/blastoice/Hop-Anim.bmp", 320, 50, 0xF81F));
         animations.push_back(animations[0]);
     }
     else if(type == EnemyType::FURRET){
         animSpd = 0.2f;
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Idle-Anim.bmp", 40, 40, 0xF81F));
-        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Walk-Anim.bmp", 56, 64, 0xF81F));
+        maxHealth = 75;
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Idle-Anim.bmp", 26, 26, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Walk-Anim.bmp", 40, 36, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Rotate-Anim.bmp", 26, 26, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Shoot-Anim.bmp", 36, 34, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Charge-Anim.bmp", 396, 24, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/furret/Hop-Anim.bmp", 34, 34, 0xF81F));
         animations.push_back(animations[0]);
-        animations.push_back(animations[0]);
-        animations.push_back(animations[0]);
-        animations.push_back(animations[0]);
-        animations.push_back(animations[0]);
+    }    
+    else if(type == EnemyType::CHARIZARD){
+        animSpd = 0.3f;
+        maxHealth = 100;
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/charizard/Idle-Anim.bmp", 34, 30, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/charizard/Walk-Anim.bmp", 34, 30, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/charizard/Rotate-Anim.bmp", 30, 30, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/charizard/Shoot-Anim.bmp", 40, 32, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/charizard/Charge-Anim.bmp", 400, 32, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/charizard/Hop-Anim.bmp", 390, 32, 0xF81F));
+        animations.push_back(assets->LoadSpriteSheet("assets/sprites/entity/charizard/Faint-Anim.bmp", 42, 28, 0xF81F));
     }
+
+    currHealth = maxHealth;
 
     if(!animations.empty()){
         sprite.sheet = animations[static_cast<int>(currentState)];
@@ -131,8 +148,6 @@ void Enemy::Update(Camera* cam, Map* map, float dt){
         default:
             break;
     }
-
-    std::cout << static_cast<int>(currentState) << "\n";
 
     CalculateFacingAngle(radToPlayer);
     Animate(dt);
@@ -385,22 +400,26 @@ bool Enemy::FindPath(int startX, int startY, int targetX, int targetY, Map* map)
     int width = map->GetWidth();
     int height = map->GetHeight();
     
-    std::vector<int> cameFrom(width * height, -1);
-    std::queue<int> frontier;
+    if(cameFrom.size() != (size_t)(width * height)){
+        cameFrom.resize(width * height);
+    }
+    std::fill(cameFrom.begin(), cameFrom.end(), -1);
+    
+    frontier.clear();
+    int head = 0;
     
     int startIdx = startY * width + startX;
     int targetIdx = targetY * width + targetX;
     
-    frontier.push(startIdx);
+    frontier.push_back(startIdx);
     cameFrom[startIdx] = startIdx;
     
     int dx[] = {1, -1, 0, 0};
     int dy[] = {0, 0, 1, -1};
     
     bool found = false;
-    while(!frontier.empty()){
-        int current = frontier.front();
-        frontier.pop();
+    while(head < (int)frontier.size()){
+        int current = frontier[head++];
         
         if(current == targetIdx){
             found = true;
@@ -418,7 +437,7 @@ bool Enemy::FindPath(int startX, int startY, int targetX, int targetY, Map* map)
                 if(map->GetTile(nx, ny) == 0){
                     int nIdx = ny * width + nx;
                     if(cameFrom[nIdx] == -1){
-                        frontier.push(nIdx);
+                        frontier.push_back(nIdx);
                         cameFrom[nIdx] = current;
                     }
                 }
@@ -442,4 +461,15 @@ bool Enemy::FindPath(int startX, int startY, int targetX, int targetY, Map* map)
     }
     
     return true;
+}
+
+void Enemy::TakeDamage(int dmgAmnt){
+    if(currentState == EnemyState::DEAD) return;
+
+    currHealth -= dmgAmnt;
+
+    if(currHealth <= 0){
+        currHealth = 0;
+        ChangeState(EnemyState::DEAD);
+    }
 }

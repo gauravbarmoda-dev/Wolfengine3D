@@ -1,7 +1,14 @@
 #include "player.h"
+#include "weapon.h"
 
-Player::Player(Vector2 startPos, float startAngle) : 
-curPos(startPos), angle(startAngle), movSpeed(2.0f), rotSpeed(1400.0f), hitbox(0.3f) {}
+Player::Player(Vector2 startPos, float startAngle, AssetMgr* assets) : 
+    curPos(startPos), angle(startAngle), movSpeed(2.0f), rotSpeed(1400.0f), hitbox(0.3f) {
+    equippedWeapon = new Weapon(assets, WeaponType::PISTOL);
+}
+
+Player::~Player(){
+    if(equippedWeapon) delete equippedWeapon;
+}
 
 void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
     Input& input = engine.GetInput();
@@ -44,4 +51,12 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
     cam->pos = curPos;
     cam->absAngle = angle;
     cam->Update();
+
+    // Weapon 
+    equippedWeapon->Update(dt);
+    if(input.isKeyPressed(Keys::R) || input.isGamepadPressed(Gamepad::A)){
+        if(equippedWeapon->TryFire()){
+            // raycaster logic
+        }
+    }
 }

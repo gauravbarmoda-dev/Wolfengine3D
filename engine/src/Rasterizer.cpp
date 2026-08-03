@@ -6,9 +6,14 @@
 #include "Camera.h"
 #include "Font.h"
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <cstdint>
 #include <cmath>
+
+const int MAX_VISIBLE_SPRITES = 4096;
+static SpriteDrawInfo drawList[MAX_VISIBLE_SPRITES];
+static SpriteDrawInfo tempSwapList[MAX_VISIBLE_SPRITES];
 
 Rasterizer::Rasterizer() : width(0), height(0), pixels(nullptr) {}
 
@@ -281,22 +286,16 @@ void Rasterizer::DrawVertSprite(int x, int startY, int endY, SpriteColumn* colum
 }
 
 void Rasterizer::DrawSprites(Camera* cam, Raycaster* raycaster){
-    const int NUM_BUCKETS = 256;
-    const float MAX_DISTANCE = 64.0f;
-    const float MAX_DISTANCE_SQR = MAX_DISTANCE * MAX_DISTANCE;
-
-    static std::vector<Sprite*> buckets[NUM_BUCKETS];
-
-    for(int i = 0; i < NUM_BUCKETS; i++){
-        buckets[i].clear();
-    }
-    
     float halfFov = std::atan(cam->fov);                //converts fov length into radians 
     float padding = 0.4f;                               //little offset so sprites don't disappear immediately
     float threshold = cosf(halfFov + padding);          //cosine curve
     float thresholdSqr = threshold * threshold;
 
+    int spriteCount = 0;
+
     for(Sprite* sprite : renderQueue){
+        if(spriteCount >= MAX_VISIBLE_SPRITES) break;
+
         Vector2 spritePos(sprite->x, sprite->y);
         Vector2 spriteVec = spritePos - cam->pos;
 
@@ -304,21 +303,44 @@ void Rasterizer::DrawSprites(Camera* cam, Raycaster* raycaster){
         if(dotUnnormalized <= 0.0f) continue;
 
         float distSqr = spriteVec.Dot(spriteVec);           //just pythagorus
-
         if(((dotUnnormalized * dotUnnormalized) / distSqr) < thresholdSqr) continue;
 
-        int bucketIdx = (int)((distSqr / MAX_DISTANCE_SQR) * (NUM_BUCKETS - 1));
+        uint32_t distBits;
+        std::memcpy(&distBits, &distSqr, sizeof(uint32_t));
 
-        if(bucketIdx < 0) bucketIdx = 0;
-        if(bucketIdx >= NUM_BUCKETS) bucketIdx = NUM_BUCKETS - 1;
-
-        buckets[bucketIdx].push_back(sprite);
+        drawList[spriteCount].sprite = sprite;
+        drawList[spriteCount].disSqrBits = distBits;
+        spriteCount++;
     }
 
-    for(int i = NUM_BUCKETS - 1; i >= 0; i--){
-        for(Sprite* sprite : buckets[i]){
-            DrawSprite(*sprite, cam, raycaster);
+    // Radix sort
+    SpriteDrawInfo* src = drawList;
+    SpriteDrawInfo* dst = tempSwapList;
+
+    for(int shift = 0; shift <= 24; shift += 8){
+        int count[256] = {0};
+
+        for(int i = 0; i < spriteCount; i++){
+            count[(src[i].disSqrBits >> shift) & 0xFF]++;
         }
+
+        for(int i = 254; i >= 0; i--){
+            count[i] += count[i + 1];
+        }
+
+        // descending order
+        for(int i = spriteCount - 1; i >= 0; i--){
+            int buckets = (src[i].disSqrBits >> shift) & 0xFF;
+            dst[--count[buckets]] = src[i];
+        }
+
+        SpriteDrawInfo* temp = src;
+        src = dst;
+        dst = temp;
+    }
+
+    for(int i = 0; i < spriteCount; i++){
+        DrawSprite(*(src[i].sprite), cam, raycaster);
     }
 
     renderQueue.clear();

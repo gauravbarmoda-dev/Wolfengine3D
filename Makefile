@@ -17,6 +17,7 @@ SRC = engine/src/Camera.cpp \
 	  demo/entity_mgr.cpp \
 	  demo/world.cpp \
 	  demo/game.cpp \
+	  demo/weapon.cpp \
 
 ifeq ($(PLATFORM), rg35xx)
     # RG35XX Plus Setup

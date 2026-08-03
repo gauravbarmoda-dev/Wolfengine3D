@@ -20,7 +20,8 @@ enum class EnemyType{
     ALOMORA,
     BULBASAUR,
     FURRET,
-    BLASTOICE
+    BLASTOICE,
+    CHARIZARD
 };
 
 class Enemy{
@@ -31,6 +32,9 @@ private:
 
     std::vector<Vector2> path;
     int currentPathIndex = 0;
+    
+    std::vector<int> cameFrom;
+    std::vector<int> frontier;
 
     float animSpd    = 0.15f;
     float animTimer  = 0.0f;
@@ -50,6 +54,9 @@ private:
     bool hasLastKnown = false;
     float rotations = 0.0f;
     int roamCount = 0;
+
+    int maxHealth;
+    int currHealth;
     
 public:
     Enemy(AssetMgr* assets, EnemyType type, float startX, float startY);
@@ -59,6 +66,8 @@ public:
     void Update(Camera* cam, Map* map, float dt);
 
     Sprite* GetSprite(){ return &sprite; }
+
+    void TakeDamage(int dmgAmnt);
 
 private:
     void Animate(float dt);
