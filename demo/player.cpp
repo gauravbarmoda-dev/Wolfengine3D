@@ -187,8 +187,13 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
         else break;
     }
 
-    // Camera Follow
-    cam->pos = cam->pos + (safeCamPos - cam->pos) * (6.0f * dt);
+    Vector2 diff = safeCamPos - cam->pos;
+    float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+    if(dist > 0.0f){
+        float moveDist = std::max(6.0f * dist, 1.0f) * dt;
+        if(moveDist >= dist) cam->pos = safeCamPos;
+        else cam->pos = cam->pos + (diff * (moveDist / dist));
+    }
     cam->z = 1.0f;
     cam->pitch = -60;
 

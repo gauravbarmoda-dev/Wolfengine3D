@@ -31,7 +31,7 @@ inline uint16_t ShadePixel(uint16_t color, int fog){
 }
 
 inline int CalculateFog(float distance){
-    const float fogMin = 8.0f;
+    const float fogMin = 6.0f;
     const float fogMax = 12.0f;
     
     if(distance <= fogMin) return 256;
