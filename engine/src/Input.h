@@ -6,7 +6,7 @@
 struct _SDL_GameController;
 
 enum class Keys{
-    W, A, S, D, E, Q, R
+    W, A, S, D, E, Q, R, F
 };
 
 enum class Gamepad{

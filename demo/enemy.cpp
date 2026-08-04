@@ -98,7 +98,7 @@ void Enemy::Update(Camera* cam, Map* map, float dt){
     float diffY = cam->pos.y - sprite.y;
     float distanceSqr = diffX * diffX + diffY * diffY;
 
-    float radToPlayer = std::atan2(diffY, diffX);
+    float radToPlayer = (float)std::atan2((double)diffY, (double)diffX);
     if(radToPlayer < 0.0f) radToPlayer += 2.0f * PI;
 
     bool canSeePlayer = false;
@@ -126,7 +126,7 @@ void Enemy::Update(Camera* cam, Map* map, float dt){
         }
         
         if(!path.empty() && currentPathIndex < (int)path.size()){
-            float radToTarget = std::atan2(path[currentPathIndex].y - sprite.y, path[currentPathIndex].x - sprite.x);
+            float radToTarget = (float)std::atan2((double)(path[currentPathIndex].y - sprite.y), (double)(path[currentPathIndex].x - sprite.x));
             if(radToTarget < 0.0f) radToTarget += 2.0f * PI;
             faceAngle = (radToTarget / (2.0f * PI)) * 4096.0f;
         }

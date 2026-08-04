@@ -15,6 +15,7 @@ static SDL_Scancode GetSDLScanCode(Keys key){
         case Keys::E : return SDL_SCANCODE_E;        
         case Keys::Q : return SDL_SCANCODE_Q;
         case Keys::R : return SDL_SCANCODE_R;
+        case Keys::F : return SDL_SCANCODE_F;
 
         default :     return SDL_SCANCODE_UNKNOWN;
     }

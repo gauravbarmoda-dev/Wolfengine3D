@@ -71,6 +71,7 @@ void Game::Render(){
     rasterizer.DrawWalls(raycaster->GetColBuffer(), &assets, &palette);
 
     entity->QueueSprites(&rasterizer);
+    rasterizer.QueueSprite(player->GetSprite());
     rasterizer.DrawSprites(&camera, raycaster);
 
     rasterizer.DrawFPS(engine.GetFPS(), 10, 10, 0xF800);

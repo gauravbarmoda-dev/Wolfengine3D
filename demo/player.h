@@ -2,7 +2,31 @@
 #define PLAYER_H
 
 #include "../engine/shlong.h"
-#include "weapon.h"
+#include <vector>
+
+enum class AttackID{
+    TACKLE,
+    HEADBUTT,
+    BUBBLE,
+    FLY,
+    COUNT
+};
+
+enum class PlayerState{
+    IDLE,
+    WALK,
+    EAT,
+    HURT,
+    ATTACKING,
+};
+
+struct Attack{
+    int damage;
+    float maxCooldown;
+    float currCooldown;
+    float range;
+    SpriteSheet* animation;
+};
 
 class Player{
 private:
@@ -12,7 +36,17 @@ private:
     float rotSpeed;
     float hitbox;
 
-    Weapon* equippedWeapon;
+    Sprite sprite;
+    std::vector<SpriteSheet*>animations;
+
+    PlayerState currState;
+    float animTimer;
+    float animSpd;
+    
+    Attack attacks[static_cast<int>(AttackID::COUNT)];
+    AttackID attackX; 
+    AttackID attackY;
+    AttackID activeAtk;
 
 public:
     Player(Vector2 startPos, float startAngle, AssetMgr* assets);
@@ -20,7 +54,10 @@ public:
 
     void Update(Camera* cam, Engine& engine, Map* map, float dt);
 
-    Weapon* GetWeapon() {return equippedWeapon;}
+    Sprite* GetSprite() {return &sprite;}
+
+private:
+    void Animate(float dt);
 };
 
 #endif
