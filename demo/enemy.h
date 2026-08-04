@@ -63,7 +63,7 @@ public:
     ~Enemy() = default;
 
     void Initialize(std::vector<SpriteSheet*> sheets, float startX, float startY);
-    void Update(Camera* cam, Map* map, float dt);
+    void Update(Player* player, Camera* cam, Map* map, float dt);
 
     Sprite* GetSprite(){ return &sprite; }
 

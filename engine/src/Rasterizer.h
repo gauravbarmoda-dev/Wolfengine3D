@@ -63,15 +63,15 @@ public:
         std::fill(pixels + startIndex, pixels + endIndex, color);
     }
 
-    void DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice);
+    void DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice, int fog);
     
-    void DrawWalls(ColumnGeometry* colBuffer, AssetMgr* assets, Palette* palette);
+    void DrawWalls(ColumnGeometry* colBuffer, AssetMgr* assets, Palette* palette, Camera* cam);
 
     void DrawHorizon(ColumnGeometry* colBuffer, uint16_t ceil, uint16_t floor);
 
-    void DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* rowBuffer, Texture* floor, Texture* ceil);
+    void DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* rowBuffer, Texture* floor, Texture* ceil, Camera* cam);
 
-    void DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, int frameHeight);
+    void DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, int frameHeight, int fog);
 
     void DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster);
 

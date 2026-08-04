@@ -25,6 +25,7 @@ struct RowGeometry{
     int32_t startFloorY;
     int32_t stepX;
     int32_t stepY;
+    int32_t distance;
 };
 
 class Raycaster{
@@ -34,7 +35,6 @@ private:
 
     ColumnGeometry* colBuffer;
     RowGeometry* rowBuffer;
-    float* recipLUT;
 
 public:
     Raycaster(int w, int h);

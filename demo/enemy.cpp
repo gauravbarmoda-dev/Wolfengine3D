@@ -1,4 +1,5 @@
 #include "enemy.h"
+#include "player.h"
 #include <cmath>
 #include <exception>
 #include <filesystem>
@@ -88,14 +89,14 @@ void Enemy::Initialize(std::vector<SpriteSheet*> sheets, float startX, float sta
     }
 }
 
-void Enemy::Update(Camera* cam, Map* map, float dt){
+void Enemy::Update(Player* player, Camera* cam, Map* map, float dt){
     if(currentState == EnemyState::DEAD){
         Animate(dt);
         return;
     }
 
-    float diffX = cam->pos.x - sprite.x;
-    float diffY = cam->pos.y - sprite.y;
+    float diffX = player->GetSprite()->x - sprite.x;
+    float diffY = player->GetSprite()->y - sprite.y;
     float distanceSqr = diffX * diffX + diffY * diffY;
 
     float radToPlayer = (float)std::atan2((double)diffY, (double)diffX);
@@ -149,7 +150,12 @@ void Enemy::Update(Camera* cam, Map* map, float dt){
             break;
     }
 
-    CalculateFacingAngle(radToPlayer);
+    float camDiffX = cam->pos.x - sprite.x;
+    float camDiffY = cam->pos.y - sprite.y;
+    float radToCamera = (float)std::atan2((double)camDiffY, (double)camDiffX);
+    if(radToCamera < 0.0f) radToCamera += 2.0f * PI;
+
+    CalculateFacingAngle(radToCamera);
     Animate(dt);
 }
 

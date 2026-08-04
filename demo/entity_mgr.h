@@ -5,6 +5,7 @@
 #include <vector>
 
 class Enemy;
+class Player;
 
 class Entity{
 private:
@@ -16,7 +17,7 @@ public:
 
     void AddEnemy(Enemy* enemy);
 
-    void Update(Camera* cam, Map* map, float dt);
+    void Update(Player* player, Camera* cam, Map* map, float dt);
 
     void QueueSprites(Rasterizer* rasterer);
 

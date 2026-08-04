@@ -2,7 +2,7 @@
 #include "game.h"
 
 Player::Player(Vector2 startPos, float startAngle, AssetMgr* assets) : 
-    curPos(startPos), angle(startAngle), movSpeed(2.0f), rotSpeed(1400.0f), hitbox(0.3f),
+    curPos(startPos), angle(startAngle), movSpeed(2.0f), rotSpeed(1400.0f), hitbox(0.1f),
     currState(PlayerState::IDLE), animTimer(0.0f), animSpd(0.15f){
     
     animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Idle-Anim.bmp", 18, 20, 0xF81F));
@@ -65,6 +65,8 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
     if(input.isKeyDown(Keys::A) || input.isGamepadDown(Gamepad::DpadLeft))  {newPos = newPos - rightDir * movStep;}
     if(input.isKeyDown(Keys::D) || input.isGamepadDown(Gamepad::DpadRight)) {newPos = newPos + rightDir * movStep;}
 
+
+
     // Camera Rotation
     if(input.isKeyDown(Keys::Q) || input.isGamepadDown(Gamepad::L1)){angle -= rotStep;}
     if(input.isKeyDown(Keys::E) || input.isGamepadDown(Gamepad::R1)){angle += rotStep;}
@@ -122,20 +124,73 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
         sprite.currentFrame = 0;
         animTimer = 0.0f;
     }
+    
+    // Sprite Movement
+    static int currDir = 4;
+    static int visualDir = 4;
+    static float turnTimer = 0.0f;
+
+    int numDirections = 8;
+    int framesPerAnim = sprite.sheet->numFrames / numDirections;
+    if(framesPerAnim == 0) framesPerAnim = 1;
+
+    bool up    = input.isKeyDown(Keys::W) || input.isGamepadDown(Gamepad::DpadUp);
+    bool down  = input.isKeyDown(Keys::S) || input.isGamepadDown(Gamepad::DpadDown);
+    bool left  = input.isKeyDown(Keys::A) || input.isGamepadDown(Gamepad::DpadLeft);
+    bool right = input.isKeyDown(Keys::D) || input.isGamepadDown(Gamepad::DpadRight);
+
+    bool isPressingKey = (up || down || left || right);
+    if(isPressingKey){
+        int targetDir = visualDir;
+
+        if(up && left) targetDir = 5;
+        else if(up && right) targetDir = 3;
+        else if(down && left) targetDir = 7;
+        else if(down && right) targetDir = 1;
+        else if(up) targetDir = 4;
+        else if(down) targetDir = 0;
+        else if(left) targetDir = 6;
+        else if(right) targetDir = 2;
+
+        if(targetDir != currDir){
+            currDir = targetDir;
+            turnTimer = 0.06f;
+        }
+        if(turnTimer > 0.0f){
+            turnTimer -= dt;
+        }
+        else{
+            visualDir = currDir;
+        }
+    }
+    else{
+        currDir = visualDir;
+        turnTimer = 0.0f;
+    }
+
+    int currAnimFram = sprite.currentFrame % framesPerAnim;
+    sprite.currentFrame = (visualDir * framesPerAnim) + currAnimFram;
 
     Animate(dt);
 
     // 3rd Person
     sprite.x = curPos.x;
     sprite.y = curPos.y;
+    
+    Vector2 targetPos = curPos - (movDir * 1.0f) + (rightDir * 0.05f);
+    Vector2 camToTarget = targetPos - curPos;
 
-    Vector2 camTarget = curPos - (movDir * 1.5f);
-    if(map->GetWorldTile(camTarget.x, camTarget.y) == 0){
-        cam->pos = camTarget;
+    Vector2 safeCamPos = curPos - (movDir * 0.3f);
+    for(int i = 1; i <= 8; i++){
+        Vector2 checkPos = curPos + (camToTarget * ((float)i / 8.0f));
+        if(map->GetWorldTile(checkPos.x, checkPos.y)== 0) safeCamPos = checkPos;
+        else break;
     }
-    else{
-        cam->pos = curPos - (movDir * 0.4f);
-    }
+
+    // Camera Follow
+    cam->pos = cam->pos + (safeCamPos - cam->pos) * (6.0f * dt);
+    cam->z = 1.0f;
+    cam->pitch = -60;
 
     // Camera Update
     cam->absAngle = angle;
@@ -145,13 +200,20 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
 void Player::Animate(float dt){
     if(sprite.sheet == nullptr) return;
 
+    int numDirections = 8;
+    int framesPerAnim = sprite.sheet->numFrames / numDirections;
+    if(framesPerAnim == 0) framesPerAnim = 1;
+
     animTimer += dt;
     if(animTimer >= animSpd){
         animTimer -= animSpd;
-        sprite.currentFrame++;
-
-        if(sprite.currentFrame >= sprite.sheet->numFrames){
-            sprite.currentFrame = 0;
+        int currDir = sprite.currentFrame / framesPerAnim;
+        int currAnimFram = sprite.currentFrame % framesPerAnim;
+        
+        currAnimFram++;
+        if(currAnimFram >= framesPerAnim){
+            currAnimFram = 0;
         }
+        sprite.currentFrame = (currDir * framesPerAnim) + currAnimFram;
     }
 }

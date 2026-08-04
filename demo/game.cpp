@@ -54,7 +54,7 @@ void Game::Update(){
     
     player->Update(&camera, engine, world->GetMap(), engine.GetDeltaTime());
 
-    entity->Update(&camera, world->GetMap(), engine.GetDeltaTime());
+    entity->Update(player, &camera, world->GetMap(), engine.GetDeltaTime());
 }
 
 void Game::Render(){
@@ -65,10 +65,11 @@ void Game::Render(){
         raycaster->GetColBuffer(),
         raycaster->GetRowBuffer(),
         world->Getfloor()[0],
-        world->GetCeil()[0]
+        world->GetCeil()[0],
+        &camera
     );
 
-    rasterizer.DrawWalls(raycaster->GetColBuffer(), &assets, &palette);
+    rasterizer.DrawWalls(raycaster->GetColBuffer(), &assets, &palette, &camera);
 
     entity->QueueSprites(&rasterizer);
     rasterizer.QueueSprite(player->GetSprite());

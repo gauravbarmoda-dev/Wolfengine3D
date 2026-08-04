@@ -5,22 +5,16 @@
 #include <complex>
 #include <cstdint>
 
+const float MAX_VIEW_DISTANCE = 13.0f;
+
 Raycaster::Raycaster(int w, int h) : scrWidth(w), scrHeight(h) {
     colBuffer = new ColumnGeometry[scrWidth];
-    
-    int halfHeight = scrHeight >> 1;
-    rowBuffer = new RowGeometry[halfHeight];
-
-    recipLUT = new float[halfHeight];
-    for(int y = 1; y < halfHeight; y++){
-        recipLUT[y] = (0.5f * scrHeight) / (float)y;
-    }
+    rowBuffer = new RowGeometry[scrHeight];
 }
 
 Raycaster::~Raycaster(){
     delete[] colBuffer;
     delete[] rowBuffer;
-    delete[] recipLUT;
 }
 
 void Raycaster::CalculateColumnGeometry(Camera* camera, Map* map){
@@ -87,21 +81,30 @@ void Raycaster::CalculateColumnGeometry(Camera* camera, Map* map){
             
             tile = mapData[mapIndex];
             if(tile > 0) break;
+
+            if(sideDist.x > MAX_VIEW_DISTANCE && sideDist.y > MAX_VIEW_DISTANCE) break;
         }
 
         // perpendicular distance to the wall, 
         // since we did not use pythagorus theorem to find the distance, there is minimal fish eye effect
-        float wallDistance = (side == 0) ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);       
-        if(wallDistance <= 0.0f) wallDistance = 0.3f;        
+        float wallDistance;
+        if(tile == 0){
+            wallDistance = MAX_VIEW_DISTANCE + 10.0f;
+        }
+        else{
+            wallDistance = (side == 0) ? (sideDist.x - deltaDist.x) : (sideDist.y - deltaDist.y);
+        }
 
-        //zBuffer[x] = wallDistance;
+        if(wallDistance <= 0.0f) wallDistance = 0.3f;
 
         int vertHeight = (int)(scrHeight / wallDistance);
 
-        int drawStart = (scrHeight >> 1) - (vertHeight >> 1);
+        int camOffset = camera->pitch + (int)(camera->z / wallDistance);
+
+        int drawStart = (scrHeight >> 1) - (vertHeight >> 1) + camOffset;
         if(drawStart < 0) drawStart = 0;
 
-        int drawEnd = (scrHeight >> 1) + (vertHeight >> 1);
+        int drawEnd = (scrHeight >> 1) + (vertHeight >> 1) + camOffset;
         if(drawEnd >= scrHeight) drawEnd = scrHeight - 1;
 
         //calculate where the ray hit the wall exactly
@@ -126,7 +129,7 @@ void Raycaster::CalculateColumnGeometry(Camera* camera, Map* map){
 }
 
 void Raycaster::CalculateRowGeometry(Camera* camera){
-    int horizon = scrHeight >> 1;
+    int horizon = (scrHeight >> 1) + camera->pitch;
 
     float rayDirX0 = camera->dir.x - camera->plane.x;
     float rayDirY0 = camera->dir.y - camera->plane.y;
@@ -136,26 +139,27 @@ void Raycaster::CalculateRowGeometry(Camera* camera){
     float invWidth = 1.0f / scrWidth;
 
     #pragma omp parallel for schedule(static)
-    for(int y = horizon + 1; y < scrHeight; y++){
+    for(int y = 0; y < scrHeight; y++){
         int p = y - horizon;          //cam position from the centre of screen
+        if(p == 0) continue;
 
-        float rowDistance = recipLUT[p];   //distance from cam to floor
-    
-        // how far we have to move in map for every 1 pixel on the screen
+        float camHeight = (p > 0) ? ((0.5f * scrHeight) + camera->z) : ((0.5f * scrHeight) - camera->z);
+        float rowDistance = camHeight / (float)std::abs(p);
+
+        if(rowDistance >= MAX_VIEW_DISTANCE){
+            rowBuffer[y].distance = rowDistance;
+            continue;
+        }
+
         float floorStepX = rowDistance * (rayDirX1 - rayDirX0) * invWidth;
         float floorStepY = rowDistance * (rayDirY1 - rayDirY0) * invWidth;
 
-        // starting point
-        float startFloorX = camera->pos.x + rowDistance * rayDirX0;
-        float startFloorY = camera->pos.y + rowDistance * rayDirY0;
-
-        int index = y - (horizon + 1);
-        
         // fixed point math
-        rowBuffer[index].startFloorX = (int32_t)(startFloorX * 65536.0f);
-        rowBuffer[index].startFloorY = (int32_t)(startFloorY * 65536.0f);
-        rowBuffer[index].stepX = (int32_t)(floorStepX * 65536.0f);
-        rowBuffer[index].stepY = (int32_t)(floorStepY * 65536.0f);
+        rowBuffer[y].startFloorX = (int32_t)((camera->pos.x + rowDistance * rayDirX0) * 65536.0f);
+        rowBuffer[y].startFloorY = (int32_t)((camera->pos.y + rowDistance * rayDirY0) * 65536.0f);
+        rowBuffer[y].stepX = (int32_t)(floorStepX * 65536.0f);
+        rowBuffer[y].stepY = (int32_t)(floorStepY * 65536.0f);
+        rowBuffer[y].distance = rowDistance;
     }
 }
 
@@ -174,7 +178,7 @@ void Raycaster::ProjectSprite(float spriteX, float spriteY, Camera* cam, SpriteP
     if(transformY <= 0.1f) return;
 
     int baseHeight = std::abs((int)scrHeight / transformY);
-    int floorY = (scrHeight >> 1) + (baseHeight >> 1);
+    int floorY = (scrHeight >> 1) + (baseHeight >> 1) + cam->pitch + (int)(cam->z / transformY);
 
     float scale = frameHeight / 64.0f;
     if(scale >= 0.4f) scale += 0.5f;
