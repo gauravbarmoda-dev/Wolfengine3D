@@ -1,4 +1,5 @@
 #include "enemy.h"
+#include "entity_mgr.h"
 #include "player.h"
 #include <cmath>
 #include <exception>
@@ -11,6 +12,7 @@
 Enemy::Enemy(AssetMgr* assets, EnemyType type, float startX, float startY){
     sprite.x = startX;
     sprite.y = startY;
+    sprite.z = 0.0f;
     sprite.currentFrame = 0;
     currentState = EnemyState::IDLE;
     faceAngle = 0.0f;
@@ -89,15 +91,43 @@ void Enemy::Initialize(std::vector<SpriteSheet*> sheets, float startX, float sta
     }
 }
 
-void Enemy::Update(Player* player, Camera* cam, Map* map, float dt){
+void Enemy::Update(Entity* manager, Player* player, Camera* cam, Map* map, float dt){
     if(currentState == EnemyState::DEAD){
         Animate(dt);
         return;
     }
+    
+    float distanceSqr = 0.0f;
+    bool canSeePlayer = UpdateShit(player, cam, map, distanceSqr);
 
+    if(!canSeePlayer && currentState == EnemyState::WALK && hasLastKnown){
+        UpdatePath(map);
+    }
+
+    switch(currentState){
+        case EnemyState::IDLE:
+            UpdateIdle(distanceSqr);
+            break;
+        case EnemyState::WALK:
+            UpdateWalk(manager, player, distanceSqr, canSeePlayer, dt, map);
+            break;
+        case EnemyState::SHOOT:
+            UpdateShoot(distanceSqr, canSeePlayer);
+            break;
+        case EnemyState::ROTATE:
+            UpdateRotate(dt, canSeePlayer, map);
+            break;
+        default:
+            break;
+    }
+    
+    UpdateVisuals(cam, dt);
+}
+
+bool Enemy::UpdateShit(Player* player, Camera* cam, Map* map, float& distanceSqr){
     float diffX = player->GetSprite()->x - sprite.x;
     float diffY = player->GetSprite()->y - sprite.y;
-    float distanceSqr = diffX * diffX + diffY * diffY;
+    distanceSqr = diffX * diffX + diffY * diffY;
 
     float radToPlayer = (float)std::atan2((double)diffY, (double)diffX);
     if(radToPlayer < 0.0f) radToPlayer += 2.0f * PI;
@@ -108,7 +138,6 @@ void Enemy::Update(Player* player, Camera* cam, Map* map, float dt){
             canSeePlayer = true;
         }
     }
-
     if(canSeePlayer){
         lastKnowX = cam->pos.x;
         lastKnowY = cam->pos.y;
@@ -117,55 +146,47 @@ void Enemy::Update(Player* player, Camera* cam, Map* map, float dt){
         path.clear();
         faceAngle = (radToPlayer / (2.0f * PI)) * 4096.0f;
     }
-    else if(currentState == EnemyState::WALK && hasLastKnown){
-        if(path.empty()){
-            bool found = FindPath((int)sprite.x, (int)sprite.y, (int)lastKnowX, (int)lastKnowY, map);
-            if(!found){
-                lastKnowX = sprite.x;
-                lastKnowY = sprite.y;
-            }
+    return canSeePlayer;
+}
+
+void Enemy::UpdatePath(Map* map){
+    if(path.empty()){
+        bool found = FindPath((int)sprite.x, (int)sprite.y, (int)lastKnowX, (int)lastKnowY, map);
+        if(!found){
+            lastKnowX = sprite.x;
+            lastKnowY = sprite.y;
         }
+    }
+    
+    if(!path.empty() && currentPathIndex < (int)path.size()){
+        float radToTarget = (float)std::atan2(
+            (double)(path[currentPathIndex].y - sprite.y), 
+            (double)(path[currentPathIndex].x - sprite.x)
+        );
         
-        if(!path.empty() && currentPathIndex < (int)path.size()){
-            float radToTarget = (float)std::atan2((double)(path[currentPathIndex].y - sprite.y), (double)(path[currentPathIndex].x - sprite.x));
-            if(radToTarget < 0.0f) radToTarget += 2.0f * PI;
-            faceAngle = (radToTarget / (2.0f * PI)) * 4096.0f;
-        }
+        if(radToTarget < 0.0f) radToTarget += 2.0f * PI;
+        faceAngle = (radToTarget / (2.0f * PI)) * 4096.0f;
     }
+}
 
-    switch(currentState){
-        case EnemyState::IDLE:
-            UpdateIdle(distanceSqr, canSeePlayer);
-            break;
-        case EnemyState::WALK:
-            UpdateWalk(distanceSqr, canSeePlayer, dt, map);
-            break;
-        case EnemyState::SHOOT:
-            UpdateShoot(distanceSqr, canSeePlayer, dt);
-            break;
-        case EnemyState::ROTATE:
-            UpdateRotate(dt, canSeePlayer, map);
-            break;
-        default:
-            break;
-    }
-
+void Enemy::UpdateVisuals(Camera* cam, float dt){
     float camDiffX = cam->pos.x - sprite.x;
     float camDiffY = cam->pos.y - sprite.y;
     float radToCamera = (float)std::atan2((double)camDiffY, (double)camDiffX);
+    
     if(radToCamera < 0.0f) radToCamera += 2.0f * PI;
 
     CalculateFacingAngle(radToCamera);
     Animate(dt);
 }
 
-void Enemy::UpdateIdle(float distanceSqr, bool canSeePlayer){
+void Enemy::UpdateIdle(bool canSeePlayer){
     if(canSeePlayer){
         ChangeState(EnemyState::WALK);
     }
 }
 
-void Enemy::UpdateWalk(float distanceSqr, bool canSeePlayer, float dt, Map* map){
+void Enemy::UpdateWalk(Entity* manager, Player* player, float distanceSqr, bool canSeePlayer, float dt, Map* map){
     float targetX, targetY;
     if(canSeePlayer){
         if(distanceSqr < (stopRangeSqr - hysteresis)){
@@ -215,22 +236,21 @@ void Enemy::UpdateWalk(float distanceSqr, bool canSeePlayer, float dt, Map* map)
         float newX = sprite.x + moveX;
         float newY = sprite.y + moveY;
 
-        float checkX = (newX > sprite.x) ? hitbox : -hitbox;
-        float checkY = (newY > sprite.y) ? hitbox : -hitbox;
-
-        if(map->GetWorldTile(newX + checkX, sprite.y - hitbox) == 0 &&
-            map->GetWorldTile(newX + checkX, sprite.y + hitbox) == 0){
+        if (!manager->CheckWallCollision(newX, sprite.y, hitbox, map) &&
+            !manager->CheckEntityCollision(newX, sprite.y, hitbox, this) &&
+            !manager->CheckPlayerCollision(newX, sprite.y, hitbox, player)){
             sprite.x = newX; 
         }
 
-        if(map->GetWorldTile(sprite.x - hitbox, newY + checkY) == 0 &&
-            map->GetWorldTile(sprite.x + hitbox, newY + checkY) == 0){
+        if (!manager->CheckWallCollision(sprite.x, newY, hitbox, map) &&
+            !manager->CheckEntityCollision(sprite.x, newY, hitbox, this) && 
+            !manager->CheckPlayerCollision(sprite.x, newY, hitbox, player)){
             sprite.y = newY;
         }
     }    
 }
 
-void Enemy::UpdateShoot(float distanceSqr, bool canSeePlayer, float dt){
+void Enemy::UpdateShoot(float distanceSqr, bool canSeePlayer){
     if(!canSeePlayer || distanceSqr > (stopRangeSqr + hysteresis)){
         ChangeState(EnemyState::WALK);
     }

@@ -45,7 +45,7 @@ struct SpriteSheet{
 
 struct Sprite{
     SpriteSheet* sheet;
-    float x, y;
+    float x, y, z;
     int currentFrame;
 };
 

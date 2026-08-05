@@ -47,7 +47,7 @@ public:
     ColumnGeometry* GetColBuffer() {return colBuffer;}
     RowGeometry* GetRowBuffer() {return rowBuffer;}
 
-    void ProjectSprite(float spriteX, float spriteY, Camera* cam, SpriteProjection* proj, float frameWidth, float frameHeight);
+    void ProjectSprite(float spriteX, float spriteY, float spriteZ, Camera* cam, SpriteProjection* proj, float frameWidth, float frameHeight);
 };
 
 #endif

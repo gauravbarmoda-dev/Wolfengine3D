@@ -18,7 +18,7 @@ bool Game::Initialize(int width, int height, const char* title){
     scrWidth  = width;
 
     if(!engine.Initialize(scrWidth, scrHeight, title)) return false;
-    engine.TargetFPS(1000);
+    engine.TargetFPS(100);
 
     rasterizer.Initialize(width, height);
     
@@ -52,7 +52,7 @@ void Game::Run(){
 void Game::Update(){
     engine.Update();
     
-    player->Update(&camera, engine, world->GetMap(), engine.GetDeltaTime());
+    player->Update(entity, &camera, engine, world->GetMap(), engine.GetDeltaTime());
 
     entity->Update(player, &camera, world->GetMap(), engine.GetDeltaTime());
 }

@@ -9,23 +9,23 @@ Player::Player(Vector2 startPos, float startAngle, AssetMgr* assets) :
     animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Walk-Anim.bmp", 18, 20, 0xF81F));
     animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Eat-Anim.bmp", 18, 4, 0xF81F));
     animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Hurt-Anim.bmp", 22, 26, 0xF81F));
+    animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Jump-Anim.bmp", 18, 22, 0xF81F));
+    animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Fly-Anim.bmp", 20, 18, 0xF81F));
 
     sprite.sheet = animations[static_cast<int>(currState)];
     sprite.currentFrame = 0;
     sprite.x = curPos.x;
     sprite.y = curPos.y;
+    sprite.z = 0.0f;
 
     attacks[static_cast<int>(AttackID::TACKLE)] = {
-        20, 1.0f, 0.0f, 7.0f, assets->LoadSpriteSheet("assets/sprites/player/Tackle-Anim.bmp", 18, 20, 0xF81F)
+        20, 1.0f, 0.0f, 0.1f, assets->LoadSpriteSheet("assets/sprites/player/Tackle.bmp", 18, 20, 0xF81F)
     };
     attacks[static_cast<int>(AttackID::HEADBUTT)] = {
         20, 1.0f, 0.0f, 7.0f, assets->LoadSpriteSheet("assets/sprites/player/Headbutt-Anim.bmp", 20, 20, 0xF81F)
     };
     attacks[static_cast<int>(AttackID::BUBBLE)] = {
-        20, 1.0f, 0.0f, 7.0f, assets->LoadSpriteSheet("assets/sprites/player/Bubble-Anim.bmp", 18, 22, 0xF81F)
-    };
-    attacks[static_cast<int>(AttackID::FLY)] = {
-        20, 1.0f, 0.0f, 7.0f, assets->LoadSpriteSheet("assets/sprites/player/Fly-Anim.bmp", 20, 18, 0xF81F)
+        20, 1.0f, 0.0f, 7.0f, assets->LoadSpriteSheet("assets/sprites/player/Bubble.bmp", 18, 22, 0xF81F)
     };
 
     attackX = AttackID::TACKLE;
@@ -35,7 +35,7 @@ Player::Player(Vector2 startPos, float startAngle, AssetMgr* assets) :
 Player::~Player(){
 }
 
-void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
+void Player::Update(Entity* manager, Camera* cam, Engine& engine, Map* map, float dt){
     Input& input = engine.GetInput();
 
     //Close Game
@@ -58,30 +58,31 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
 
     Vector2 newPos = curPos;
     Vector2 rightDir(-movDir.y, movDir.x);
-    
+
+    float currentMovStep = (currState == PlayerState::FLY) ? movStep * 2.0f : movStep; 
+
     // Movement
-    if(input.isKeyDown(Keys::W) || input.isGamepadDown(Gamepad::DpadUp))    {newPos = newPos + movDir * movStep;}
-    if(input.isKeyDown(Keys::S) || input.isGamepadDown(Gamepad::DpadDown))  {newPos = newPos - movDir * movStep;}
-    if(input.isKeyDown(Keys::A) || input.isGamepadDown(Gamepad::DpadLeft))  {newPos = newPos - rightDir * movStep;}
-    if(input.isKeyDown(Keys::D) || input.isGamepadDown(Gamepad::DpadRight)) {newPos = newPos + rightDir * movStep;}
-
-
+    if(currState != PlayerState::ATTACKING){
+        if(input.isKeyDown(Keys::W) || input.isGamepadDown(Gamepad::DpadUp))    {newPos = newPos + movDir * movStep;}
+        if(input.isKeyDown(Keys::S) || input.isGamepadDown(Gamepad::DpadDown))  {newPos = newPos - movDir * movStep;}
+        if(input.isKeyDown(Keys::A) || input.isGamepadDown(Gamepad::DpadLeft))  {newPos = newPos - rightDir * movStep;}
+        if(input.isKeyDown(Keys::D) || input.isGamepadDown(Gamepad::DpadRight)) {newPos = newPos + rightDir * movStep;}
+    }
 
     // Camera Rotation
     if(input.isKeyDown(Keys::Q) || input.isGamepadDown(Gamepad::L1)){angle -= rotStep;}
     if(input.isKeyDown(Keys::E) || input.isGamepadDown(Gamepad::R1)){angle += rotStep;}
 
-    // HitBox Check
-    float checkX = (newPos.x > curPos.x) ? (hitbox) : (-hitbox);
-    float checkY = (newPos.y > curPos.y) ? (hitbox) : (-hitbox);
+    // Collision Check
+    if (!manager->CheckWallCollision(newPos.x, curPos.y, hitbox, map) &&
+        !manager->CheckEntityCollision(newPos.x, curPos.y, hitbox, nullptr)){
+        curPos.x = newPos.x;
+    }
 
-    // Wall Collision Check
-    if(map->GetWorldTile(newPos.x + checkX, curPos.y - hitbox) == 0 &&
-       map->GetWorldTile(newPos.x + checkX, curPos.y + hitbox) == 0)
-    {curPos.x = newPos.x;}
-    if(map->GetWorldTile(curPos.x - hitbox, newPos.y + checkY) == 0 &&
-       map->GetWorldTile(curPos.x + hitbox, newPos.y + checkY) == 0)
-    {curPos.y = newPos.y;}
+    if (!manager->CheckWallCollision(curPos.x, newPos.y, hitbox, map) &&
+        !manager->CheckEntityCollision(curPos.x, newPos.y, hitbox, nullptr)){
+        curPos.y = newPos.y;
+    }
     
     // State Logic
     bool isMoving = (input.isKeyDown(Keys::W) || input.isKeyDown(Keys::A) || input.isKeyDown(Keys::S) || input.isKeyDown(Keys::D) ||
@@ -91,21 +92,40 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
 
     PlayerState nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
 
-    //Attack Logic
-    if(currState == PlayerState::ATTACKING){
-        nextState = PlayerState::ATTACKING;
+    // Jump Logic, Attack Logic
+    if(currState == PlayerState::JUMP){
+        UpdateJump(dt, isMoving, nextState);
+    }
 
-        if(sprite.currentFrame == sprite.sheet->numFrames - 1 && (animTimer + dt) >= animSpd){
-            nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
+    else if(currState == PlayerState::ATTACKING){
+        UpdateAttack(manager, map, dt, isMoving, nextState);
+        
+        if(input.isKeyPressed(Keys::SPACE) || input.isGamepadPressed(Gamepad::A)){
+            nextState = PlayerState::FLY;
+            flyTimer = 0.0f;
         }
     }
+    
+    else if(currState == PlayerState::FLY){
+        UpdateFly(dt, isMoving, nextState);
+    }
+
     else{
-        if((input.isKeyPressed(Keys::R) || input.isGamepadPressed(Gamepad::X)) && attacks[static_cast<int>(attackX)].currCooldown <= 0.0f){
+        if(input.isKeyPressed(Keys::SPACE) || input.isGamepadPressed(Gamepad::A)){
+            nextState = PlayerState::JUMP;
+            jumpTimer = 0.0f;
+        }
+
+        else if((input.isKeyPressed(Keys::R) || input.isGamepadPressed(Gamepad::X)) &&
+                attacks[static_cast<int>(attackX)].currCooldown <= 0.0f){
             nextState = PlayerState::ATTACKING;
             activeAtk = attackX;
+            animSpd = 0.02;
             attacks[static_cast<int>(attackX)].currCooldown = attacks[static_cast<int>(attackX)].maxCooldown;
         }
-        else if((input.isKeyPressed(Keys::F) || input.isGamepadPressed(Gamepad::Y)) && attacks[static_cast<int>(attackY)].currCooldown <= 0.0f){
+
+        else if((input.isKeyPressed(Keys::F) || input.isGamepadPressed(Gamepad::Y)) && 
+                attacks[static_cast<int>(attackY)].currCooldown <= 0.0f){
             nextState = PlayerState::ATTACKING;
             activeAtk = attackY;
             attacks[static_cast<int>(attackY)].currCooldown = attacks[static_cast<int>(attackY)].maxCooldown;
@@ -125,11 +145,6 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
         animTimer = 0.0f;
     }
     
-    // Sprite Movement
-    static int currDir = 4;
-    static int visualDir = 4;
-    static float turnTimer = 0.0f;
-
     int numDirections = 8;
     int framesPerAnim = sprite.sheet->numFrames / numDirections;
     if(framesPerAnim == 0) framesPerAnim = 1;
@@ -180,7 +195,7 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
     Vector2 targetPos = curPos - (movDir * 1.0f) + (rightDir * 0.05f);
     Vector2 camToTarget = targetPos - curPos;
 
-    Vector2 safeCamPos = curPos - (movDir * 0.3f);
+    Vector2 safeCamPos = curPos - (movDir * 0.6f);
     for(int i = 1; i <= 8; i++){
         Vector2 checkPos = curPos + (camToTarget * ((float)i / 8.0f));
         if(map->GetWorldTile(checkPos.x, checkPos.y)== 0) safeCamPos = checkPos;
@@ -194,8 +209,8 @@ void Player::Update(Camera* cam, Engine& engine, Map* map, float dt){
         if(moveDist >= dist) cam->pos = safeCamPos;
         else cam->pos = cam->pos + (diff * (moveDist / dist));
     }
-    cam->z = 1.0f;
-    cam->pitch = -60;
+    cam->z = 1.2f;
+    cam->pitch = -90;
 
     // Camera Update
     cam->absAngle = angle;
@@ -220,5 +235,97 @@ void Player::Animate(float dt){
             currAnimFram = 0;
         }
         sprite.currentFrame = (currDir * framesPerAnim) + currAnimFram;
+    }
+}
+
+void Player::UpdateJump(float dt, bool isMoving, PlayerState& nextState){
+    nextState = PlayerState::JUMP;
+
+    if(sprite.sheet == nullptr){
+        nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
+        return;
+    }
+
+    float jumpDuration = 0.6f;
+    float maxJumpHeight = 90.0f;
+
+    jumpTimer += dt;
+    float progress = jumpTimer / jumpDuration;
+
+    if(progress >= 1.0f){
+        sprite.z = 0.0f;
+        nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
+    }
+    else{
+        int lutIndex = (int)(progress * 2048.0f);
+        sprite.z = fcos(lutIndex) * maxJumpHeight;
+    }
+}
+
+void Player::UpdateAttack(Entity* manager, Map* map, float dt, bool isMoving, PlayerState& nextState){
+    nextState = PlayerState::ATTACKING;
+    
+    if(sprite.sheet == nullptr){
+        nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
+        return;
+    }
+
+    int numDirections = 8;
+    int framesPerAnim = sprite.sheet->numFrames / numDirections;
+    if(framesPerAnim == 0) framesPerAnim = 1;
+
+    int currAnimFram = sprite.currentFrame % framesPerAnim;
+
+    bool isHitFrame = (currAnimFram == (framesPerAnim / 2)) && ((animTimer + dt) >= animSpd);
+
+    Attack currStats = attacks[static_cast<int>(activeAtk)];
+   
+    int facingAngle = (int)angle + ((4 - visualDir) * 512);
+
+    Vector2 facingDir(fcos(facingAngle), fsin(facingAngle));
+
+    switch(activeAtk){
+        case AttackID::TACKLE : {
+            float dashSpd = 6.0f * dt;
+            Vector2 newPos = curPos + facingDir * dashSpd;
+            if (!manager->CheckWallCollision(newPos.x, curPos.y, hitbox, map) && 
+                !manager->CheckEntityCollision(newPos.x, curPos.y, hitbox, nullptr)){
+                curPos.x = newPos.x;
+            }
+            if (!manager->CheckWallCollision(curPos.x, newPos.y, hitbox, map) && 
+                !manager->CheckEntityCollision(curPos.x, newPos.y, hitbox, nullptr)){ 
+                curPos.y = newPos.y; 
+            }
+        } break;
+
+        case AttackID::BUBBLE : {
+            float progress = (float)currAnimFram / (framesPerAnim - 1);
+            sprite.z = fcos((int)(progress * 2048.f)) * 120.0f;
+        } break;
+
+        default : break;
+    }
+
+    if(isHitFrame){
+        manager->PlayerMeleeAttack(curPos.x, curPos.y, facingDir.x, facingDir.y, currStats.range, currStats.damage);
+    }
+
+    if(currAnimFram == framesPerAnim - 1 && (animTimer + dt) >= animSpd){
+        sprite.z = 0.0f;
+        animSpd = 0.15f;
+        nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
+    }
+}
+void Player::UpdateFly(float dt, bool isMoving, PlayerState& nextState){
+    nextState = PlayerState::FLY;
+    flyTimer += dt;
+
+    if (sprite.z < 90.0f) {
+        sprite.z += 400.0f * dt; 
+        if (sprite.z > 90.0f) sprite.z = 90.0f;
+    }
+    if (flyTimer >= 5.0f) {
+        sprite.z = 0.0f; 
+        nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
     }
 }

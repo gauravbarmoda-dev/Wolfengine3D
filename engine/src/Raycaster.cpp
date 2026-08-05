@@ -163,7 +163,7 @@ void Raycaster::CalculateRowGeometry(Camera* camera){
     }
 }
 
-void Raycaster::ProjectSprite(float spriteX, float spriteY, Camera* cam, SpriteProjection* proj, float frameWidth, float frameHeight){
+void Raycaster::ProjectSprite(float spriteX, float spriteY, float spriteZ, Camera* cam, SpriteProjection* proj, float frameWidth, float frameHeight){
     float relativeX = spriteX - cam->pos.x;
     float relativeY = spriteY - cam->pos.y;
     
@@ -178,7 +178,7 @@ void Raycaster::ProjectSprite(float spriteX, float spriteY, Camera* cam, SpriteP
     if(transformY <= 0.1f) return;
 
     int baseHeight = std::abs((int)scrHeight / transformY);
-    int floorY = (scrHeight >> 1) + (baseHeight >> 1) + cam->pitch + (int)(cam->z / transformY);
+    int floorY = (scrHeight >> 1) + (baseHeight >> 1) + cam->pitch + (int)((cam->z - spriteZ) / transformY);
 
     float scale = frameHeight / 64.0f;
     if(scale >= 0.4f) scale += 0.5f;

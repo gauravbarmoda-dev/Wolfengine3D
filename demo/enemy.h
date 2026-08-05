@@ -5,6 +5,7 @@
 #include <vector>
 
 class Player;
+class Entity;
 
 enum class EnemyState{
     IDLE    = 0,
@@ -63,9 +64,11 @@ public:
     ~Enemy() = default;
 
     void Initialize(std::vector<SpriteSheet*> sheets, float startX, float startY);
-    void Update(Player* player, Camera* cam, Map* map, float dt);
+    void Update(Entity* manager, Player* player, Camera* cam, Map* map, float dt);
 
-    Sprite* GetSprite(){ return &sprite; }
+    Sprite* GetSprite(){return &sprite;}
+    EnemyState GetCurrentState() {return currentState;}
+    float GetHitbox() {return hitbox;}
 
     void TakeDamage(int dmgAmnt);
 
@@ -73,9 +76,13 @@ private:
     void Animate(float dt);
     void ChangeState(EnemyState newState);
 
-    void UpdateIdle(float distanceSqr, bool canSeePlayer);
-    void UpdateWalk(float distanceSqr, bool canSeePlayer, float dt, Map* map);
-    void UpdateShoot(float distanceSqr, bool canSeePlayer, float dt);
+    bool UpdateShit(Player* player, Camera* cam, Map* map, float& distanceSqr);
+    void UpdatePath(Map* map);
+    void UpdateVisuals(Camera* cam, float dt);
+
+    void UpdateIdle(bool canSeePlayer);
+    void UpdateWalk(Entity* manager, Player* player, float distanceSqr, bool canSeePlayer, float dt, Map* map);
+    void UpdateShoot(float distanceSqr, bool canSeePlayer);
     void UpdateRotate(float dt, bool canSeePlayer, Map* map);
 
     bool CheckFOV(float radToPlayer);

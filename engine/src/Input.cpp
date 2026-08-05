@@ -8,14 +8,15 @@
 
 static SDL_Scancode GetSDLScanCode(Keys key){
     switch (key){
-        case Keys::W : return SDL_SCANCODE_W;
-        case Keys::A : return SDL_SCANCODE_A;
-        case Keys::S : return SDL_SCANCODE_S;
-        case Keys::D : return SDL_SCANCODE_D;
-        case Keys::E : return SDL_SCANCODE_E;        
-        case Keys::Q : return SDL_SCANCODE_Q;
-        case Keys::R : return SDL_SCANCODE_R;
-        case Keys::F : return SDL_SCANCODE_F;
+        case Keys::W     : return SDL_SCANCODE_W;
+        case Keys::A     : return SDL_SCANCODE_A;
+        case Keys::S     : return SDL_SCANCODE_S;
+        case Keys::D     : return SDL_SCANCODE_D;
+        case Keys::E     : return SDL_SCANCODE_E;        
+        case Keys::Q     : return SDL_SCANCODE_Q;
+        case Keys::R     : return SDL_SCANCODE_R;
+        case Keys::F     : return SDL_SCANCODE_F;
+        case Keys::SPACE : return SDL_SCANCODE_SPACE;
 
         default :     return SDL_SCANCODE_UNKNOWN;
     }

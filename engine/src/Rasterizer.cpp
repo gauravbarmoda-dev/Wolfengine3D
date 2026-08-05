@@ -270,7 +270,7 @@ void Rasterizer::DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster){
     SpriteFrame* frame = &sprite.sheet->frames[sprite.currentFrame];
 
     SpriteProjection proj;
-    raycaster->ProjectSprite(sprite.x, sprite.y, cam, &proj, frame->width, frame->height);
+    raycaster->ProjectSprite(sprite.x, sprite.y, sprite.z, cam, &proj, frame->width, frame->height);
 
     if(proj.distance <= 0.1f) return;
     if(proj.distance >= MAX_VIEW_DISTANCE) return;
