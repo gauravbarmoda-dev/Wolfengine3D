@@ -2,7 +2,7 @@
 #include "game.h"
 
 Player::Player(Vector2 startPos, float startAngle, AssetMgr* assets) : 
-    curPos(startPos), angle(startAngle), movSpeed(2.0f), rotSpeed(1400.0f), hitbox(0.1f),
+    curPos(startPos), angle(startAngle), movSpeed(1.2f), rotSpeed(1400.0f), hitbox(0.1f),
     currState(PlayerState::IDLE), animTimer(0.0f), animSpd(0.15f){
     
     animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Idle-Anim.bmp", 18, 20, 0xF81F));
@@ -11,6 +11,7 @@ Player::Player(Vector2 startPos, float startAngle, AssetMgr* assets) :
     animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Hurt-Anim.bmp", 22, 26, 0xF81F));
     animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Jump-Anim.bmp", 18, 22, 0xF81F));
     animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Fly-Anim.bmp", 20, 18, 0xF81F));
+    animations.push_back(assets->LoadSpriteSheet("assets/sprites/player/Hover-Anim.bmp", 18, 20, 0xF81F));
 
     sprite.sheet = animations[static_cast<int>(currState)];
     sprite.currentFrame = 0;
@@ -29,13 +30,13 @@ Player::Player(Vector2 startPos, float startAngle, AssetMgr* assets) :
     };
 
     attackX = AttackID::TACKLE;
-    attackY = AttackID::HEADBUTT;
+    attackY = AttackID::BUBBLE;
 }
 
 Player::~Player(){
 }
 
-void Player::Update(Entity* manager, Camera* cam, Engine& engine, Map* map, float dt){
+void Player::Update(Entity* manager, Camera* cam, Engine& engine, Particle* particles, Map* map, float dt){
     Input& input = engine.GetInput();
 
     //Close Game
@@ -59,14 +60,14 @@ void Player::Update(Entity* manager, Camera* cam, Engine& engine, Map* map, floa
     Vector2 newPos = curPos;
     Vector2 rightDir(-movDir.y, movDir.x);
 
-    float currentMovStep = (currState == PlayerState::FLY) ? movStep * 2.0f : movStep; 
+    float currentMovStep = (currState == PlayerState::FLY || currState == PlayerState::HOVER) ? movStep * 2.0f : movStep; 
 
     // Movement
     if(currState != PlayerState::ATTACKING){
-        if(input.isKeyDown(Keys::W) || input.isGamepadDown(Gamepad::DpadUp))    {newPos = newPos + movDir * movStep;}
-        if(input.isKeyDown(Keys::S) || input.isGamepadDown(Gamepad::DpadDown))  {newPos = newPos - movDir * movStep;}
-        if(input.isKeyDown(Keys::A) || input.isGamepadDown(Gamepad::DpadLeft))  {newPos = newPos - rightDir * movStep;}
-        if(input.isKeyDown(Keys::D) || input.isGamepadDown(Gamepad::DpadRight)) {newPos = newPos + rightDir * movStep;}
+        if(input.isKeyDown(Keys::W) || input.isGamepadDown(Gamepad::DpadUp))    {newPos = newPos + movDir * currentMovStep;}
+        if(input.isKeyDown(Keys::S) || input.isGamepadDown(Gamepad::DpadDown))  {newPos = newPos - movDir * currentMovStep;}
+        if(input.isKeyDown(Keys::A) || input.isGamepadDown(Gamepad::DpadLeft))  {newPos = newPos - rightDir * currentMovStep;}
+        if(input.isKeyDown(Keys::D) || input.isGamepadDown(Gamepad::DpadRight)) {newPos = newPos + rightDir * currentMovStep;}
     }
 
     // Camera Rotation
@@ -98,16 +99,38 @@ void Player::Update(Entity* manager, Camera* cam, Engine& engine, Map* map, floa
     }
 
     else if(currState == PlayerState::ATTACKING){
-        UpdateAttack(manager, map, dt, isMoving, nextState);
+        UpdateAttack(manager, map, dt, isMoving, nextState, particles);
         
-        if(input.isKeyPressed(Keys::SPACE) || input.isGamepadPressed(Gamepad::A)){
+        if(sprite.z == 0.0f && (input.isKeyPressed(Keys::SPACE) || input.isGamepadPressed(Gamepad::A))){
             nextState = PlayerState::FLY;
             flyTimer = 0.0f;
         }
     }
     
-    else if(currState == PlayerState::FLY){
-        UpdateFly(dt, isMoving, nextState);
+    else if(currState == PlayerState::FLY || currState == PlayerState::HOVER){
+        if(input.isKeyPressed(Keys::SPACE) || input.isGamepadPressed(Gamepad::A)){
+            flyTimer = 10.0f;
+        }
+
+        if((input.isKeyPressed(Keys::R) || input.isGamepadPressed(Gamepad::X)) &&
+                attacks[static_cast<int>(attackX)].currCooldown <= 0.0f){
+            nextState = PlayerState::ATTACKING;
+            activeAtk = attackX;
+            animSpd = 0.02f;
+            attacks[static_cast<int>(attackX)].currCooldown = attacks[static_cast<int>(attackX)].maxCooldown;
+        }
+        
+        else if((input.isKeyPressed(Keys::F) || input.isGamepadPressed(Gamepad::Y)) &&
+                attacks[static_cast<int>(attackY)].currCooldown <= 0.0f){
+            nextState = PlayerState::ATTACKING;
+            animSpd = 0.05;
+            activeAtk = attackY;
+            attacks[static_cast<int>(attackY)].currCooldown = attacks[static_cast<int>(attackX)].maxCooldown;
+        }
+
+        else{
+            UpdateFly(dt, isMoving, nextState);
+        }
     }
 
     else{
@@ -137,9 +160,11 @@ void Player::Update(Entity* manager, Camera* cam, Engine& engine, Map* map, floa
         currState = nextState;   
         if(currState == PlayerState::ATTACKING){
             sprite.sheet = attacks[static_cast<int>(activeAtk)].animation;
+            attackBaseZ = sprite.z;
         }
         else{
             sprite.sheet = animations[static_cast<int>(currState)];
+            animSpd = 0.15f;
         }
         sprite.currentFrame = 0;
         animTimer = 0.0f;
@@ -262,7 +287,7 @@ void Player::UpdateJump(float dt, bool isMoving, PlayerState& nextState){
     }
 }
 
-void Player::UpdateAttack(Entity* manager, Map* map, float dt, bool isMoving, PlayerState& nextState){
+void Player::UpdateAttack(Entity* manager, Map* map, float dt, bool isMoving, PlayerState& nextState, Particle* particles){
     nextState = PlayerState::ATTACKING;
     
     if(sprite.sheet == nullptr){
@@ -299,8 +324,28 @@ void Player::UpdateAttack(Entity* manager, Map* map, float dt, bool isMoving, Pl
         } break;
 
         case AttackID::BUBBLE : {
-            float progress = (float)currAnimFram / (framesPerAnim - 1);
-            sprite.z = fcos((int)(progress * 2048.f)) * 120.0f;
+            float progress = 1.0f;
+            if(framesPerAnim > 1){
+                progress = (float)currAnimFram / (framesPerAnim - 1);
+            }
+            sprite.z = attackBaseZ;
+
+            if(isHitFrame){
+                for(int i = 0; i < 120; i++){
+                    float baseVx = facingDir.x * 4.0f;
+                    float baseVy = facingDir.y * 4.0f;
+
+                    float spreadX = ((rand() % 100) - 50) / 50.0f;
+                    float spreadY = ((rand() % 100) - 50) / 50.0f;
+
+                    float vz = 100.0f + (rand() % 400);
+                    float life = 0.5f + ((rand() % 100) / 100.0f);
+                    
+                    uint16_t bubbleColor = 0x05FF;
+
+                    particles->Emit(curPos.x, curPos.y, sprite.z, baseVx + spreadX, baseVy + spreadY, vz, life, bubbleColor);
+                }
+            }
         } break;
 
         default : break;
@@ -311,21 +356,32 @@ void Player::UpdateAttack(Entity* manager, Map* map, float dt, bool isMoving, Pl
     }
 
     if(currAnimFram == framesPerAnim - 1 && (animTimer + dt) >= animSpd){
-        sprite.z = 0.0f;
         animSpd = 0.15f;
-        nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
+        
+        if(sprite.z > 1.0f){
+            nextState = isMoving ? PlayerState::FLY : PlayerState::HOVER;
+        }
+        else{
+            sprite.z = 0.0f;
+            nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
+        }
     }
 }
 void Player::UpdateFly(float dt, bool isMoving, PlayerState& nextState){
-    nextState = PlayerState::FLY;
+    nextState = isMoving ? PlayerState::FLY : PlayerState::HOVER;
     flyTimer += dt;
-
-    if (sprite.z < 90.0f) {
-        sprite.z += 400.0f * dt; 
-        if (sprite.z > 90.0f) sprite.z = 90.0f;
+   
+    if(flyTimer >= 10.0f){
+        sprite.z -= 400.0f * dt;
+        if (sprite.z <= 0.0f) {
+            sprite.z = 0.0f; 
+            nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
+        }
     }
-    if (flyTimer >= 5.0f) {
-        sprite.z = 0.0f; 
-        nextState = isMoving ? PlayerState::WALK : PlayerState::IDLE;
+    else{
+        if (sprite.z < 180.0f) {
+            sprite.z += 500.0f * dt; 
+            if (sprite.z > 180.0f) sprite.z = 180.0f;
+        }
     }
 }

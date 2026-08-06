@@ -1,4 +1,5 @@
 #include "Rasterizer.h"
+#include "Mathutil.h"
 #include "Raycaster.h"
 #include "AssetMgr.h"
 #include "Palette.h"
@@ -13,6 +14,10 @@
 
 const float MAX_VIEW_DISTANCE = 12.0f;
 const float MAX_VIEW_DISTANCE_SQR = 144.0f;
+
+const int aoThreshold = 16;
+const int minShadowBrightness = 50;
+const int shadowRange = 100 - minShadowBrightness;
 
 // Fast pixel Darkening
 inline uint16_t ShadePixel(uint16_t color, int fog){
@@ -142,8 +147,22 @@ void Rasterizer::DrawTexturedVLine(int x, int startY, int endY, float texPos, fl
     int32_t fixedPos  = (int32_t)(texPos * 65536.0f);
     int32_t fixedStep = (int32_t)(texStep * 65536.0f);
 
+    // Ambient Occlusion
     for(int y = startY; y < endY; y++){
-        dst[pixIndex] = ShadePixel(src[fixedPos >> 16], fog);
+        int currFog = fog;
+        int disFromTop = y - startY;
+        int disFromBot = endY - y;
+
+        if(disFromTop < aoThreshold){
+            int multiplier = minShadowBrightness + ((shadowRange * disFromTop) / aoThreshold);
+            currFog = (currFog * multiplier) / 100;
+        }
+        else if (disFromBot < aoThreshold){
+            int multiplier = minShadowBrightness + ((shadowRange * disFromBot) / aoThreshold);
+            currFog = (currFog * multiplier) / 100;
+        }
+
+        dst[pixIndex] = ShadePixel(src[fixedPos >> 16], currFog);
         fixedPos += fixedStep;
         pixIndex += width;
     }
@@ -159,23 +178,27 @@ void Rasterizer::DrawWalls(ColumnGeometry* colBuffer, AssetMgr* assets, Palette*
             continue;
         }
 
+        // fog based on distance
+        int depthFog = CalculateFog(column.distance);
+
+        // fog combined with directional lighting
+        int finalFog = (depthFog * column.lightLevel) >> 8;
+
         Texture* tex = assets->GetTexture(column.tileID);
 
         if(tex != nullptr){
             int texX = (float)(column.wallX * tex->width);
-        
+
             float exactVertHeight = (float)height / column.distance;
             float step = column.distance * ((float)tex->height / (float)height);
-    
+
             float camOffset = cam->pitch + (cam->z / column.distance);
             float exactDrawStart = ((float)height * 0.5f) - (exactVertHeight * 0.5f) + camOffset;
 
             float texPos = ((float)column.drawStart - exactDrawStart) * step;
 
-            int fog = CalculateFog(column.distance);
-
             uint16_t* slice = tex->pixels + (texX << tex->shift);
-            DrawTexturedVLine(x, column.drawStart, column.drawEnd, texPos, step, slice, fog);
+            DrawTexturedVLine(x, column.drawStart, column.drawEnd, texPos, step, slice, finalFog);
         }
         else{
             uint16_t color = palette->GetColor(column.tileID);
@@ -231,7 +254,16 @@ void Rasterizer::DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* row
                 for(int x = 0; x < width; x++){
                     if(y >= colBuffer[x].drawEnd){
                         uint16_t color = floorPx[(((floorY >> fShift) & floorTex->mask) << floorTex->shift) + ((floorX >> fShift) & floorTex->mask)];
-                        dst[rowOffset + x] = ShadePixel(color, fog);
+                        
+                        //Ambient Occlusion
+                        int currFog = fog;
+                        int disFromWallBase = y - colBuffer[x].drawEnd;
+                        if(disFromWallBase < aoThreshold){
+                            int multiplier = minShadowBrightness + ((shadowRange * disFromWallBase) / aoThreshold);
+                            currFog = (currFog * multiplier) / 100;
+                        }
+
+                        dst[rowOffset + x] = ShadePixel(color, currFog);
                     }
                     floorX += stepX;
                     floorY += stepY;
@@ -256,7 +288,16 @@ void Rasterizer::DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* row
                 for(int x = 0; x < width; x++){
                     if(y < colBuffer[x].drawStart){
                         uint16_t color = ceilPx[(((floorY >> cShift) & ceilTex->mask) << ceilTex->shift) + ((floorX >> cShift) & ceilTex->mask)];
-                        dst[rowOffset + x] = ShadePixel(color, fog);
+                        
+                        //Ambient Occlusion
+                        int currFog = fog;
+                        int disFromWallTop = colBuffer[x].drawStart - y;
+                        if(disFromWallTop < aoThreshold){
+                            int multiplier = minShadowBrightness + ((shadowRange * disFromWallTop) / aoThreshold);
+                            currFog = (currFog * multiplier) / 100;
+                        }
+
+                        dst[rowOffset + x] = ShadePixel(color, currFog);
                     }
                     floorX += stepX;
                     floorY += stepY;

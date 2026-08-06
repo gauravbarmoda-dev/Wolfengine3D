@@ -51,14 +51,23 @@ void Game::Run(){
 
 void Game::Update(){
     engine.Update();
-    
-    player->Update(entity, &camera, engine, world->GetMap(), engine.GetDeltaTime());
+    float dt = engine.GetDeltaTime();
 
-    entity->Update(player, &camera, world->GetMap(), engine.GetDeltaTime());
+    // Directional Lighting
+    sunAngle += dt * 10.0f;
+    if(sunAngle >= 4096.0f) sunAngle -= 4096.0f;
+    
+    player->Update(entity, &camera, engine, &particles, world->GetMap(), dt);
+
+    entity->Update(player, &camera, world->GetMap(), dt);
+
+    particles.Update(dt);
 }
 
 void Game::Render(){
-    raycaster->CalculateColumnGeometry(&camera, world->GetMap());
+    Vector2 sunDir(fcos((int)sunAngle), fsin((int)sunAngle));
+
+    raycaster->CalculateColumnGeometry(&camera, world->GetMap(), sunDir);
     raycaster->CalculateRowGeometry(&camera);
 
     rasterizer.DrawTexturedHorizon(
@@ -74,6 +83,8 @@ void Game::Render(){
     entity->QueueSprites(&rasterizer);
     rasterizer.QueueSprite(player->GetSprite());
     rasterizer.DrawSprites(&camera, raycaster);
+
+    particles.Render(&rasterizer, &camera, raycaster);
 
     rasterizer.DrawFPS(engine.GetFPS(), 10, 10, 0xF800);
 }

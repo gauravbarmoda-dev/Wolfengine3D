@@ -1,6 +1,7 @@
 #ifndef RAYCASTER_H
 #define RAYCASTER_H
 
+#include "Mathutil.h"
 #include "Sprite.h"
 #include <cstdint>
 
@@ -18,6 +19,7 @@ struct ColumnGeometry{
     uint16_t   drawEnd;
     unsigned char tileID;
     bool side;
+    int lightLevel;
 };
 
 struct RowGeometry{
@@ -40,7 +42,7 @@ public:
     Raycaster(int w, int h);
     ~Raycaster();
 
-    void CalculateColumnGeometry(Camera* camera, Map* map);
+    void CalculateColumnGeometry(Camera* camera, Map* map, Vector2 sunDir);
 
     void CalculateRowGeometry(Camera* camera);
 

@@ -18,8 +18,11 @@ private:
     Entity* entity;
     World*  world;
     Player* player;
+    Particle particles;
 
     int scrWidth, scrHeight, level;
+
+    float sunAngle = 0.0f;
 
 public:
     Game();

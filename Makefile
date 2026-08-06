@@ -11,6 +11,7 @@ SRC = engine/src/Camera.cpp \
       engine/src/Raycaster.cpp \
       engine/src/Palette.cpp \
       engine/src/AssetMgr.cpp \
+	  engine/src/Particle.cpp \
       demo/main.cpp \
 	  demo/player.cpp \
 	  demo/enemy.cpp \

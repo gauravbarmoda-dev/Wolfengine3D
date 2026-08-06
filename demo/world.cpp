@@ -2,7 +2,7 @@
 
 bool World::Initialize(AssetMgr* assets){
     Level level1;
-    level1.map = assets->LoadMap("assets/maps/level3.map", 32);
+    level1.map = assets->LoadMap("assets/maps/level1.map", 16);
     level1.ceilTex.push_back (assets->LoadTexture(1, "assets/sprites/ceil/mud_ceiling.bmp"));
     level1.floorTex.push_back(assets->LoadTexture(2, "assets/sprites/floor/mud_grass_floor.bmp"));
     levels.push_back(level1);

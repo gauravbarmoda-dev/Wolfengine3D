@@ -1,5 +1,6 @@
 #include "Raycaster.h"
 #include "Camera.h"
+#include "Mathutil.h"
 #include "Sprite.h"
 #include "Map.h"
 #include <complex>
@@ -17,7 +18,7 @@ Raycaster::~Raycaster(){
     delete[] rowBuffer;
 }
 
-void Raycaster::CalculateColumnGeometry(Camera* camera, Map* map){
+void Raycaster::CalculateColumnGeometry(Camera* camera, Map* map, Vector2 sunDir){
     
     const unsigned char* mapData = map->GetRawData();
     
@@ -118,6 +119,23 @@ void Raycaster::CalculateColumnGeometry(Camera* camera, Map* map){
         // flipping the texture if we looking at the back of the wall
         if(side == 0 && rayDir.x < 0) wallX = 1.0f - wallX;
         if(side == 1 && rayDir.y > 0) wallX =  1.0f - wallX;
+
+        //Directional Lighting
+        Vector2 wallNormal;
+
+        if(side == 0){
+            wallNormal.x = (rayDir.x > 0.0f) ? -1.0f : 1.0f;
+            wallNormal.y = 0.0f;
+        }
+        else{
+            wallNormal.x = 0.0f;
+            wallNormal.y = (rayDir.y > 0.0f) ? -1.0f : 1.0f;
+        }
+
+        float dotPorduct = wallNormal.Dot(sunDir);
+        float lightIntensity = std::max(0.0f, dotPorduct);
+        
+        int calculatedLight = 120 + (int)(lightIntensity * 136.0f);
         
         colBuffer[x].distance  = wallDistance; 
         colBuffer[x].drawStart = drawStart; 
@@ -125,6 +143,7 @@ void Raycaster::CalculateColumnGeometry(Camera* camera, Map* map){
         colBuffer[x].tileID    = tile; 
         colBuffer[x].wallX     = wallX; 
         colBuffer[x].side      = side;
+        colBuffer[x].lightLevel= calculatedLight;
     }
 }
 
