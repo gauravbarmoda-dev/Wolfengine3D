@@ -23,6 +23,7 @@ private:
     int height;
 
     uint16_t* pixels;
+    uint16_t* display = nullptr;
 
     std::vector<Sprite*> renderQueue;
 
@@ -33,6 +34,8 @@ public:
     bool Initialize(int scrWidth, int scrHeight);
 
     void QueueSprite(Sprite* sprite) {renderQueue.push_back(sprite);}
+
+    void TransposeTo(uint16_t* dest, int pitch);
 
     void CleanUp();
 
@@ -46,21 +49,13 @@ public:
     
     void DrawStr(int x, int y, const std::string& s, uint16_t color);
     
-    void DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16_t color);
-
     inline void DrawVLine(int x, int startY, int endY, uint16_t color){
-        int pixIndex = startY * width + x;
+        // stored rotated 
+        int pixIndex = x * height + startY;
         for(int y = startY; y < endY; y++){
             pixels[pixIndex] = color;
-            pixIndex += width;
+            pixIndex++;
         } 
-    }
-
-    inline void DrawHLine(int y, int startX, int endX, uint16_t color){
-        int startIndex = y * width + startX;
-        int endIndex   = y * width + endX;
-
-        std::fill(pixels + startIndex, pixels + endIndex, color);
     }
 
     void DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice, int fog);
@@ -79,7 +74,11 @@ public:
 
     int GetWidth() const {return width;}
     int GetHeight() const {return height;}
-    const uint16_t* GetPixels() const {return pixels;}
+    
+    const uint16_t* GetPixelBuffer(){
+        TransposeTo(display, width * sizeof(uint16_t));
+        return display;
+    }
 };
 
 #endif

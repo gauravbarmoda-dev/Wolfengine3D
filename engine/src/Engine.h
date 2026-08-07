@@ -31,9 +31,10 @@ public:
 
     bool Initialize(int width, int height, const char* title);
     void Update();
-    void Present(const uint16_t * pixels);
     void Wait();
     void Quit();
+
+    void Present(const uint16_t* pixels);
 
     void TargetFPS(int fps) {targetFrameTime = (fps > 0) ? (1.0f/fps) : 0;}
 

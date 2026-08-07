@@ -90,6 +90,6 @@ void Game::Render(){
 }
 
 void Game::Present(){
-    engine.Present(rasterizer.GetPixels());
+    engine.Present(rasterizer.GetPixelBuffer());
     engine.Wait();
 }

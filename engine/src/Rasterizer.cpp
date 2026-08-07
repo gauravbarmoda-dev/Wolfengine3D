@@ -16,8 +16,8 @@ const float MAX_VIEW_DISTANCE = 12.0f;
 const float MAX_VIEW_DISTANCE_SQR = 144.0f;
 
 const int aoThreshold = 16;
-const int minShadowBrightness = 50;
-const int shadowRange = 100 - minShadowBrightness;
+const int minShadowBrightness = 128;
+const int shadowRange = 256 - minShadowBrightness;
 
 // Fast pixel Darkening
 inline uint16_t ShadePixel(uint16_t color, int fog){
@@ -38,11 +38,12 @@ inline uint16_t ShadePixel(uint16_t color, int fog){
 inline int CalculateFog(float distance){
     const float fogMin = 6.0f;
     const float fogMax = 12.0f;
+    const float fogScale = 256.0f / (fogMax - fogMin);
     
     if(distance <= fogMin) return 256;
     if(distance >= fogMax) return 0;
 
-    return 256 - (int)(((distance - fogMin) / (fogMax - fogMin)) * 256.0f); 
+    return 256 - (int)((distance - fogMin) * fogScale); 
 }
 
 const int MAX_VISIBLE_SPRITES = 4096;
@@ -60,6 +61,7 @@ bool Rasterizer::Initialize(int scrWidth, int scrHeight){
     height = scrHeight;
 
     pixels = new uint16_t[width * height];
+    display = new uint16_t[width * height];
     return true;
 }
 
@@ -67,6 +69,10 @@ void Rasterizer::CleanUp(){
     if(pixels != nullptr){
         delete[] pixels;
         pixels = nullptr;
+    }
+    if(display != nullptr){
+        delete[] display;
+        display = nullptr;
     }
     return;
 }
@@ -76,9 +82,29 @@ void Rasterizer::Clear(uint16_t color){
     std::fill_n(pixels, size, color);
 }
 
+void Rasterizer::TransposeTo(uint16_t* dest, int pitch){
+    int destWidth = pitch / 2;
+    const int BLOCK_SIZE = 32;
+
+    #pragma omp parallel for collapse(2) schedule(static)
+    for(int i = 0; i < width; i += BLOCK_SIZE){
+        for(int j = 0; j < height; j += BLOCK_SIZE){
+            int maxX = std::min(i + BLOCK_SIZE, width);
+            int maxY = std::min(j + BLOCK_SIZE, height);
+
+            for(int y = j; y < maxY; y++){
+                int destOffset = y * destWidth;
+                for(int x = i; x < maxX; x++){
+                    dest[destOffset + x] = pixels[x * height + y];
+                }
+            }
+        }
+    }
+}
+
 void Rasterizer::DrawPixel(int x, int y, uint16_t color){
     if(x >= 0 && x < width && y >= 0 && y < height){
-        pixels[y * width + x] = color;
+        pixels[x * height + y] = color;
     }
 }
 
@@ -91,7 +117,7 @@ void Rasterizer::DrawChar(int x, int y, char c, uint16_t color){
             int px = x + (i & 7);
             int py = y + (i >> 3);
 
-            int pixIndex = py * width + px;
+            int pixIndex = px * height + py;
             if(pixIndex >= 0 && pixIndex < width * height){
                 pixels[pixIndex] = color;
             }
@@ -123,48 +149,29 @@ void Rasterizer::DrawFPS(int fps, int x, int y, uint16_t color){
     DrawChar(curX, y, '0' + (fps % 10), color);
 }
 
-void Rasterizer::DrawRectangle(int x, int y, int w, int h, bool isFilled, uint16_t color){
-    if(isFilled){
-        for(int i = y; i < y + h; i++){
-            DrawHLine(i, x, x + w, color);
-        }
-    }
-    else{
-        DrawHLine(y, x, x + w, color);
-        DrawVLine(x, y, y + h, color);
-        DrawVLine(x + w - 1, y , y + h, color);
-        DrawHLine(y + h - 1, x, x + w, color);
-    }
-    return;
-}
-
-
 void Rasterizer::DrawTexturedVLine(int x, int startY, int endY, float texPos, float texStep, uint16_t* slice, int fog){
     uint16_t* __restrict__ dst = pixels;
     const uint16_t* __restrict__ src = slice;
 
-    int pixIndex = startY * width + x;
     int32_t fixedPos  = (int32_t)(texPos * 65536.0f);
     int32_t fixedStep = (int32_t)(texStep * 65536.0f);
 
-    // Ambient Occlusion
+    // stored rotated to avoide cache misses
+    int pixIndex = x * height + startY;
     for(int y = startY; y < endY; y++){
         int currFog = fog;
         int disFromTop = y - startY;
-        int disFromBot = endY - y;
+        int disFromBot = (endY - 1) - y;
+        int dis = std::min(disFromTop, disFromBot);
 
-        if(disFromTop < aoThreshold){
-            int multiplier = minShadowBrightness + ((shadowRange * disFromTop) / aoThreshold);
-            currFog = (currFog * multiplier) / 100;
-        }
-        else if (disFromBot < aoThreshold){
-            int multiplier = minShadowBrightness + ((shadowRange * disFromBot) / aoThreshold);
-            currFog = (currFog * multiplier) / 100;
+        if(dis < aoThreshold){
+            int multiplier = minShadowBrightness + ((shadowRange * dis) >> 4);
+            currFog = (currFog * multiplier) >> 8;
         }
 
         dst[pixIndex] = ShadePixel(src[fixedPos >> 16], currFog);
         fixedPos += fixedStep;
-        pixIndex += width;
+        pixIndex++;
     }
 }
 
@@ -221,90 +228,79 @@ void Rasterizer::DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* row
     if(!floorTex || !ceilTex) return;
     int horizon = (height >> 1) + cam->pitch;
 
-    // telling compiller that it is safe to use SIMD instructions here
     uint16_t* __restrict__ dst = pixels;
     const uint16_t* __restrict__ floorPx = floorTex->pixels;
     const uint16_t* __restrict__ ceilPx  = ceilTex->pixels;
 
     int fShift = 16 - floorTex->shift;
-    int cShift = 16 - ceilTex->shift;
-    
-    #pragma omp parallel for schedule(dynamic, 8)
+    int cShift = 16 - ceilTex->shift; 
+
+    int rowFog[height];
     for(int y = 0; y < height; y++){
-        if(y == horizon) continue;
-       
-        float dist = rowBuffer[y].distance;
-        int rowOffset = y * width;
+        rowFog[y] = CalculateFog(rowBuffer[y].distance);
+    }
 
-        if(y >= horizon){
-            if(dist >= MAX_VIEW_DISTANCE){
-                for(int x = 0; x < width; x++){
-                    if(y >= colBuffer[x].drawEnd) dst[rowOffset + x] = 0x0000;
-                }
-            }
-            else{
-                int fog = CalculateFog(dist);
-                
+    const int BLOCK = 32;
 
-                int32_t floorX = rowBuffer[y].startFloorX;
-                int32_t floorY = rowBuffer[y].startFloorY;
-                int32_t stepX = rowBuffer[y].stepX;
-                int32_t stepY = rowBuffer[y].stepY;
+    #pragma omp parallel for collapse(2) schedule(static)
+    for(int startX = 0; startX < width; startX += BLOCK){
+        for(int startY = 0; startY < height; startY += BLOCK){
+            int endX = std::min(startX + BLOCK, width);
+            int endY = std::min(startY + BLOCK, height);
 
-                for(int x = 0; x < width; x++){
-                    if(y >= colBuffer[x].drawEnd){
-                        uint16_t color = floorPx[(((floorY >> fShift) & floorTex->mask) << floorTex->shift) + ((floorX >> fShift) & floorTex->mask)];
-                        
-                        //Ambient Occlusion
-                        int currFog = fog;
-                        int disFromWallBase = y - colBuffer[x].drawEnd;
-                        if(disFromWallBase < aoThreshold){
-                            int multiplier = minShadowBrightness + ((shadowRange * disFromWallBase) / aoThreshold);
-                            currFog = (currFog * multiplier) / 100;
+            for(int x = startX; x < endX; x++){
+                int pixIndex = x * height;
+                for(int y = startY; y < endY; y++){
+                    if(y == horizon) continue;
+                   
+                    if(y >= horizon){
+                        if(rowBuffer[y].distance >= MAX_VIEW_DISTANCE){
+                            if(y >= colBuffer[x].drawEnd) dst[pixIndex + y] = 0x0000;
                         }
+                        else{
+                            if(y >= colBuffer[x].drawEnd){
+                                int32_t floorX = rowBuffer[y].startFloorX + x * rowBuffer[y].stepX;
+                                int32_t floorY = rowBuffer[y].startFloorY + x * rowBuffer[y].stepY;
 
-                        dst[rowOffset + x] = ShadePixel(color, currFog);
+                                uint16_t color = floorPx[(((floorY >> fShift) & floorTex->mask) << floorTex->shift) + ((floorX >> fShift) & floorTex->mask)];
+                                
+                                int currFog = rowFog[y];
+                                int disFromWallBase = y - colBuffer[x].drawEnd;
+                                if(disFromWallBase < aoThreshold){
+                                    int multiplier = minShadowBrightness + ((shadowRange * disFromWallBase) >> 4);
+                                    currFog = (currFog * multiplier) >> 8;
+                                }
+
+                                dst[pixIndex + y] = ShadePixel(color, currFog);
+                            }
+                        }
                     }
-                    floorX += stepX;
-                    floorY += stepY;
+                    else{
+                        if(rowBuffer[y].distance >= MAX_VIEW_DISTANCE){
+                            if(y < colBuffer[x].drawStart) dst[pixIndex + y] = 0x0000;
+                        }
+                        else{
+                            if(y < colBuffer[x].drawStart){
+                                int32_t floorX = rowBuffer[y].startFloorX + x * rowBuffer[y].stepX;
+                                int32_t floorY = rowBuffer[y].startFloorY + x * rowBuffer[y].stepY;
+
+                                uint16_t color = ceilPx[(((floorY >> cShift) & ceilTex->mask) << ceilTex->shift) + ((floorX >> cShift) & ceilTex->mask)];
+                                
+                                int currFog = rowFog[y];
+                                int disFromWallTop = (colBuffer[x].drawStart - 1) - y;
+                                if(disFromWallTop < aoThreshold){
+                                    int multiplier = minShadowBrightness + ((shadowRange * disFromWallTop) >> 4);
+                                    currFog = (currFog * multiplier) >> 8;
+                                }
+
+                                dst[pixIndex + y] = ShadePixel(color, currFog);
+                            }
+                        }
+                    }
                 }
             }
         }
-        else{
-            if(dist >= MAX_VIEW_DISTANCE){
-                for(int x = 0; x < width; x++){
-                    if(y < colBuffer[x].drawStart) dst[rowOffset + x] = 0x0000;
-                }
-            }
-            else{
-                int fog = CalculateFog(dist);
-
-
-                int32_t floorX = rowBuffer[y].startFloorX;
-                int32_t floorY = rowBuffer[y].startFloorY;
-                int32_t stepX = rowBuffer[y].stepX;
-                int32_t stepY = rowBuffer[y].stepY;
-
-                for(int x = 0; x < width; x++){
-                    if(y < colBuffer[x].drawStart){
-                        uint16_t color = ceilPx[(((floorY >> cShift) & ceilTex->mask) << ceilTex->shift) + ((floorX >> cShift) & ceilTex->mask)];
-                        
-                        //Ambient Occlusion
-                        int currFog = fog;
-                        int disFromWallTop = colBuffer[x].drawStart - y;
-                        if(disFromWallTop < aoThreshold){
-                            int multiplier = minShadowBrightness + ((shadowRange * disFromWallTop) / aoThreshold);
-                            currFog = (currFog * multiplier) / 100;
-                        }
-
-                        dst[rowOffset + x] = ShadePixel(color, currFog);
-                    }
-                    floorX += stepX;
-                    floorY += stepY;
-                }
-            }
-        }
-    }    
+    }       
 }
 
 void Rasterizer::DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster){
@@ -368,19 +364,19 @@ void Rasterizer::DrawVertSprite(int x, int startY, int endY, SpriteColumn* colum
         uint16_t* __restrict__ dst = pixels;
         const uint16_t* __restrict__ src = run.runData;
 
-        int pixIndex = drawStartY * width + x;
+        int pixIndex = x * height + drawStartY;
         for(int y = drawStartY; y < drawEndY; y++){
             dst[pixIndex] = ShadePixel(src[texPos >> 16], fog);
-            pixIndex += width;
             texPos += step;
+            pixIndex++;
         }
     }
 }
 
 void Rasterizer::DrawSprites(Camera* cam, Raycaster* raycaster){
-    float halfFov = std::atan(cam->fov);                //converts fov length into radians 
-    float padding = 0.4f;                               //little offset so sprites don't disappear immediately
-    float threshold = cosf(halfFov + padding);          //cosine curve
+    float halfFov = std::atan(cam->fov);
+    float padding = 0.4f;
+    float threshold = cosf(halfFov + padding);
     float thresholdSqr = threshold * threshold;
 
     int spriteCount = 0;

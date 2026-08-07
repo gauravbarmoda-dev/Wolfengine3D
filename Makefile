@@ -26,7 +26,7 @@ ifeq ($(PLATFORM), rg35xx)
 else
     # PC Setup (Default)
     CXX = g++
-    CXXFLAGS = -std=c++17 -Wall -Wextra -O3 -ffast-math -flto -fopenmp
+    CXXFLAGS = -std=c++17 -Wall -Wextra -O3 -ffast-math -flto -fopenmp -g
 endif
 
 LDFLAGS = -lSDL2 -fopenmp
@@ -44,7 +44,7 @@ clean:
 	rm -f $(OBJ) $(TARGET)
 
 run: $(TARGET)
-	OMP_WAIT_POLICY=PASSIVE OMP_NUM_THREADS=4 OMP_STACKSIZE=128k ./$(TARGET)
+	OMP_WAIT_POLICY=PASSIVE OMP_NUM_THREADS=4 OMP_STACKSIZE=128k perf record -e cycles:u --call-graph dwarf ./$(TARGET)
 
 deploy: $(TARGET)
 ifndef DEVICE_IP
