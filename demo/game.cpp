@@ -82,7 +82,7 @@ void Game::Render(){
 
     entity->QueueSprites(&rasterizer);
     rasterizer.QueueSprite(player->GetSprite());
-    rasterizer.DrawSprites(&camera, raycaster);
+    rasterizer.DrawSprites(&camera, raycaster, sunDir, true);
 
     particles.Render(&rasterizer, &camera, raycaster);
 

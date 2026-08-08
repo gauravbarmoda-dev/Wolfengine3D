@@ -375,7 +375,96 @@ void Rasterizer::DrawVertSprite(int x, int startY, int endY, SpriteColumn* colum
     }
 }
 
-void Rasterizer::DrawSprites(Camera* cam, Raycaster* raycaster){
+void Rasterizer::DrawVertShadow(int x, int startY, int endY, SpriteColumn* col, int frameHeight, int fog, int drawEndY, float shearX, float scaleY){
+    int spriteHeight = endY - startY;
+    if(spriteHeight <= 0) return;
+
+    int32_t invStep = (spriteHeight << 16) / frameHeight;
+
+    for(int i = 0; i < col->numRuns; i++){
+        SpriteRun& run = col->runs[i];
+
+        int screenY = startY + ((run.start * invStep) >> 16);
+        int runHeight = ((run.size * invStep) >> 16);
+        int screenEndY = screenY + runHeight;
+
+        int lastShadowX = -1;
+        int lastShadowY = -1;
+
+        for(int y = screenY; y < screenEndY; y++){
+            int h = drawEndY - y;
+            if(h < 0) h = 0;
+
+            int shadowX = x + (int)(h * shearX);
+            int shadowY = drawEndY - (int)(h * scaleY);
+
+            if(shadowX == lastShadowX && shadowY == lastShadowY) continue;
+
+            //fix: horizontal lines when sun andle is low, scaleY become 1.0f
+            if(lastShadowY != -1 && std::abs(shadowY - lastShadowY) > 1){
+                int stepY = (shadowY > lastShadowY) ? 1 : -1;
+                int fillY = lastShadowY + stepY;
+                while(fillY != shadowY){
+                    if(shadowX >= 0 && shadowX < width && fillY >= 0 && fillY < height){
+                        int pixIndex = shadowX * height + fillY;
+                        pixels[pixIndex] = ShadePixel(pixels[pixIndex], 200);
+                    }
+                    fillY += stepY;
+                }
+            }    
+
+            lastShadowX = shadowX;
+            lastShadowY = shadowY;
+            
+            if(shadowX >= 0 && shadowX < width && shadowY >= 0 && shadowY < height){
+                int pixIndex = shadowX * height + shadowY;
+                pixels[pixIndex] = ShadePixel(pixels[pixIndex], 200);
+            }
+        }
+    }
+}
+
+void Rasterizer::DrawShadowSprite(Sprite& sprite, Camera* cam, Raycaster* ray, Vector2 sunDir){
+    SpriteFrame* frame = &sprite.sheet->frames[sprite.currentFrame];
+
+    SpriteProjection proj;
+    ray->ProjectSprite(sprite.x, sprite.y, 0.0f, cam, &proj, frame->width, frame->height);
+
+    if(proj.distance < 0.1f) return;
+
+    int spriteWidth = proj.drawEndX - proj.drawStartX;
+    if(spriteWidth <= 0) return;
+
+    Vector2 shadowDir(-sunDir.x, -sunDir.y);
+    float localY = shadowDir.Dot(cam->dir);
+    float localX = shadowDir.Dot(cam->plane);
+
+    float scaleY = localY * 0.4f;
+    float shearX = localX * 1.5f;
+
+    int drawStartX = std::max(0, proj.drawStartX);
+    int drawEndX = std::min(width, proj.drawEndX);
+
+    int32_t texX_step = (frame->width << 16) / spriteWidth;
+    int32_t texX_FP = (drawStartX - proj.drawStartX) * texX_step;
+
+    int fog = CalculateFog(proj.distance);
+
+    for(int x = drawStartX; x < drawEndX; x++){
+        int texX = texX_FP >> 16;
+        texX_FP += texX_step;
+
+        // depth bugger check
+        if(proj.distance >= ray->GetColBuffer()[x].distance) continue;
+
+        SpriteColumn* col = &frame->columns[texX];
+        if(col->numRuns == 0) continue;
+
+        DrawVertShadow(x, proj.drawStartY, proj.drawEndY, col, frame->height, fog, proj.drawEndY, shearX, scaleY);
+    }
+}
+
+void Rasterizer::SortDrawList(Camera* cam){
     float halfFov = std::atan(cam->fov);
     float padding = 0.4f;
     float threshold = cosf(halfFov + padding);
@@ -431,9 +520,18 @@ void Rasterizer::DrawSprites(Camera* cam, Raycaster* raycaster){
         dst = temp;
     }
 
-    for(int i = 0; i < spriteCount; i++){
-        DrawSprite(*(src[i].sprite), cam, raycaster);
-    }
+    this->sortedSprites = src;
+    this->visibleSprites = spriteCount;
+}
 
+void Rasterizer::DrawSprites(Camera* cam, Raycaster* raycaster, Vector2 sunDir, bool drawShadow){
+    SortDrawList(cam);
+
+    for(int i = 0; i < visibleSprites; i++){
+        if(drawShadow){
+            DrawShadowSprite(*(sortedSprites[i].sprite), cam, raycaster, sunDir);
+        }
+        DrawSprite(*(sortedSprites[i].sprite), cam, raycaster);
+    } 
     renderQueue.clear();
 }

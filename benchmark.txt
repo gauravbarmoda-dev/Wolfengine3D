@@ -1,0 +1,22 @@
+# started on Sat Aug  8 23:34:35 2026
+
+
+ Performance counter stats for './game':
+
+                 0      context-switches:u               #      0.0 cs/sec  cs_per_second     
+                 0      cpu-migrations:u                 #      0.0 migrations/sec  migrations_per_second
+             8,206      page-faults:u                    #    117.0 faults/sec  page_faults_per_second
+         70,160.14 msec task-clock:u                     #      2.0 CPUs  CPUs_utilized       
+    4,63,58,10,109      L1-dcache-load-misses:u          #      2.5 %  l1d_miss_rate            (43.28%)
+      17,09,55,209      branch-misses:u                  #      0.2 %  branch_miss_rate         (43.29%)
+   87,51,07,86,033      branches:u                       #   1247.3 M/sec  branch_frequency     (57.22%)
+ 2,27,71,92,35,504      cpu-cycles:u                     #      3.2 GHz  cycles_frequency       (57.09%)
+ 7,73,71,81,50,090      instructions:u                   #      3.4 instructions  insn_per_cycle  (56.73%)
+    5,26,97,97,082      stalled-cycles-frontend:u        #     0.02 frontend_cycles_idle        (56.72%)
+
+      34.725903173 seconds time elapsed
+
+      59.800328000 seconds user
+       7.625124000 seconds sys
+
+

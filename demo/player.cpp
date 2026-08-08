@@ -331,7 +331,7 @@ void Player::UpdateAttack(Entity* manager, Map* map, float dt, bool isMoving, Pl
             sprite.z = attackBaseZ;
 
             if(isHitFrame){
-                for(int i = 0; i < 120; i++){
+                for(int i = 0; i < 240; i++){
                     float baseVx = facingDir.x * 4.0f;
                     float baseVy = facingDir.y * 4.0f;
 

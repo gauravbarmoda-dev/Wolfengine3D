@@ -1,6 +1,7 @@
 #ifndef RASTERIZER_H
 #define RASTERIZER_H
 
+#include "Sprite.h"
 #include <string>
 #include <cstdint>
 #include <algorithm>
@@ -11,11 +12,11 @@ struct RowGeometry;
 struct Texture;
 struct SpriteColumn;
 struct Sprite;
+struct Vector2;
 class Raycaster;
 class AssetMgr;
 class Palette;
 class Camera;
-
 
 class Rasterizer{
 private:
@@ -26,6 +27,20 @@ private:
     uint16_t* display = nullptr;
 
     std::vector<Sprite*> renderQueue;
+
+    SpriteDrawInfo* sortedSprites = nullptr;
+    int visibleSprites = 0;
+
+private:
+    void SortDrawList(Camera* cam);
+    
+    void DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, int frameHeight, int fog);
+    
+    void DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster);
+    
+    void DrawVertShadow(int x, int startY, int endY, SpriteColumn* col, int frameHeight, int fog, int drawEndY, float shearX, float scaleY);
+
+    void DrawShadowSprite(Sprite& sprite, Camera* cam, Raycaster* ray, Vector2 sunDir);
 
 public:
     Rasterizer();
@@ -66,12 +81,8 @@ public:
 
     void DrawTexturedHorizon(ColumnGeometry* colBuffer, RowGeometry* rowBuffer, Texture* floor, Texture* ceil, Camera* cam);
 
-    void DrawVertSprite(int x, int startY, int endY, SpriteColumn* column, int frameHeight, int fog);
-
-    void DrawSprite(Sprite& sprite, Camera* cam, Raycaster* raycaster);
-
-    void DrawSprites(Camera* cam, Raycaster* raycaster);
-
+    void DrawSprites(Camera* cam, Raycaster* raycaster, Vector2 sunDir, bool drawShadow);
+    
     int GetWidth() const {return width;}
     int GetHeight() const {return height;}
     
