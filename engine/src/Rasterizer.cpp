@@ -19,7 +19,6 @@ const int aoThreshold = 16;
 const int minShadowBrightness = 128;
 const int shadowRange = 256 - minShadowBrightness;
 
-// Fast pixel Darkening
 inline uint16_t ShadePixel(uint16_t color, int fog){
     if(fog >= 256) return color;
     if(fog <= 0) return 0x0000;
@@ -176,7 +175,9 @@ void Rasterizer::DrawTexturedVLine(int x, int startY, int endY, float texPos, fl
 }
 
 void Rasterizer::DrawWalls(ColumnGeometry* colBuffer, AssetMgr* assets, Palette* palette, Camera* cam){
-    #pragma omp parallel for schedule(dynamic, 8)
+    float invHeight = 1.0f / (float)height;
+
+    #pragma omp parallel for schedule(guided)
     for(int x = 0; x < width; x++){
 
         ColumnGeometry& column = colBuffer[x];
@@ -196,10 +197,11 @@ void Rasterizer::DrawWalls(ColumnGeometry* colBuffer, AssetMgr* assets, Palette*
         if(tex != nullptr){
             int texX = (float)(column.wallX * tex->width);
 
-            float exactVertHeight = (float)height / column.distance;
-            float step = column.distance * ((float)tex->height / (float)height);
+            float invDistance = 1.0f / column.distance;
+            float exactVertHeight = (float)height * invDistance;
+            float step = column.distance * ((float)tex->height * invHeight);
 
-            float camOffset = cam->pitch + (cam->z / column.distance);
+            float camOffset = cam->pitch + (cam->z * invDistance);
             float exactDrawStart = ((float)height * 0.5f) - (exactVertHeight * 0.5f) + camOffset;
 
             float texPos = ((float)column.drawStart - exactDrawStart) * step;

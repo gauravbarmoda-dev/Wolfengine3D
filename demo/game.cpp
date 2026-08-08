@@ -18,7 +18,7 @@ bool Game::Initialize(int width, int height, const char* title){
     scrWidth  = width;
 
     if(!engine.Initialize(scrWidth, scrHeight, title)) return false;
-    engine.TargetFPS(100);
+    engine.TargetFPS(1000);
 
     rasterizer.Initialize(width, height);
     

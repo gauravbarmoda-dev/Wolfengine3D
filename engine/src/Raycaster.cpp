@@ -98,9 +98,10 @@ void Raycaster::CalculateColumnGeometry(Camera* camera, Map* map, Vector2 sunDir
 
         if(wallDistance <= 0.0f) wallDistance = 0.3f;
 
-        int vertHeight = (int)(scrHeight / wallDistance);
+        float invWallDistance = 1.0f / wallDistance;
+        int vertHeight = (int)(scrHeight * invWallDistance);
 
-        int camOffset = camera->pitch + (int)(camera->z / wallDistance);
+        int camOffset = camera->pitch + (int)(camera->z * invWallDistance);
 
         int drawStart = (scrHeight >> 1) - (vertHeight >> 1) + camOffset;
         if(drawStart < 0) drawStart = 0;
@@ -196,8 +197,10 @@ void Raycaster::ProjectSprite(float spriteX, float spriteY, float spriteZ, Camer
     proj->distance = transformY;
     if(transformY <= 0.1f) return;
 
-    int baseHeight = std::abs((int)scrHeight / transformY);
-    int floorY = (scrHeight >> 1) + (baseHeight >> 1) + cam->pitch + (int)((cam->z - spriteZ) / transformY);
+    float invTransformY = 1.0f / transformY;
+
+    int baseHeight = std::abs((int)(scrHeight * invTransformY));
+    int floorY = (scrHeight >> 1) + (baseHeight >> 1) + cam->pitch + (int)((cam->z - spriteZ) * invTransformY);
 
     float scale = frameHeight / 64.0f;
     if(scale >= 0.4f) scale += 0.5f;
@@ -205,10 +208,10 @@ void Raycaster::ProjectSprite(float spriteX, float spriteY, float spriteZ, Camer
     int spriteHeight = (int)(baseHeight * scale);
     int spriteWidth = (spriteHeight * frameWidth) / frameHeight;
 
-    int spriteScreenX = int((scrWidth >> 1) * (1 + transformX / transformY));
+    int spriteScreenX = (int)((scrWidth >> 1) * (1.0f + transformX * invTransformY));
 
     float vOffset = 60.0f; 
-    int screenVOffset = (int)(vOffset / transformY);
+    int screenVOffset = (int)(vOffset * invTransformY);
     
     proj->drawStartX = spriteScreenX - (spriteWidth >> 1);
     proj->drawEndX   = spriteScreenX + (spriteWidth >> 1);
